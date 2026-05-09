@@ -31,7 +31,8 @@ export default function AddPlantModal({ onClose, onSave }) {
       setSuggestions(result.allSuggestions || [])
       let cycle = 7
       try {
-        const w = await getWateringCycle(result.commonName)
+        // 급수 주기 조회는 영문 학명으로 (Perenual은 영문만 지원)
+        const w = await getWateringCycle(result.scientificName)
         if (w?.cycle) cycle = w.cycle
       } catch {}
       setForm({ nickname: result.commonName, species: result.scientificName, wateringCycle: cycle })
@@ -45,7 +46,8 @@ export default function AddPlantModal({ onClose, onSave }) {
   const selectSuggestion = async (s) => {
     setForm(f => ({ ...f, nickname: s.name, species: s.scientific }))
     try {
-      const w = await getWateringCycle(s.name)
+      // 후보 선택 시에도 학명으로 급수 주기 재조회
+      const w = await getWateringCycle(s.scientific || s.name)
       if (w?.cycle) setForm(f => ({ ...f, wateringCycle: w.cycle }))
     } catch {}
   }
