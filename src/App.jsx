@@ -30,6 +30,16 @@ export default function App() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [showSettings, setShowSettings] = useState(false)
 
+  // 기기 감지 중 (비동기) → 스플래시 표시
+  if (isReadOnly === null) {
+    return (
+      <div className="min-h-screen bg-[#1A3528] flex flex-col items-center justify-center gap-4">
+        <div className="text-5xl animate-pulse">🌿</div>
+        <p className="text-[#86EFAC] text-sm font-semibold">기기 확인 중...</p>
+      </div>
+    )
+  }
+
   const overdueCount = plants.filter(p => getDDay(p) < 0).length
   const todayCount   = plants.filter(p => getDDay(p) === 0).length
   const urgentCount  = overdueCount + todayCount
