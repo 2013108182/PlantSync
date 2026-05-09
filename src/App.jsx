@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Settings } from 'lucide-react'
+import { Plus, Settings, Lock } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
 import { usePlants, getDDay } from './hooks/usePlants'
@@ -10,7 +10,6 @@ import AddPlantModal      from './components/AddPlantModal'
 import EditPlantModal     from './components/EditPlantModal'
 import SettingsModal      from './components/SettingsModal'
 import DeleteConfirmModal from './components/DeleteConfirmModal'
-import NameSelectModal    from './components/NameSelectModal'
 
 function getGreeting() {
   const h = new Date().getHours()
@@ -24,23 +23,19 @@ function getGreeting() {
 
 export default function App() {
   const { plants, loading, error, addPlant, waterPlant, updatePlant, deletePlant } = usePlants()
-  const { currentUserName, isDeviceDetected, setName } = useUser()
+  const { currentUserName, isReadOnly } = useUser()
 
   const [showAdd, setShowAdd]           = useState(false)
   const [editTarget, setEditTarget]     = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [showSettings, setShowSettings] = useState(false)
 
-  // 이름이 없으면 선택 화면 먼저
-  if (!currentUserName) {
-    return <NameSelectModal onSelect={setName} />
-  }
-
   const overdueCount = plants.filter(p => getDDay(p) < 0).length
   const todayCount   = plants.filter(p => getDDay(p) === 0).length
   const urgentCount  = overdueCount + todayCount
 
   const handleWater = async (id, name) => {
+    if (isReadOnly) return
     try {
       await waterPlant(id, name)
       toast.success(`💧 ${name}이(가) 물을 줬어요!`, {
@@ -50,18 +45,19 @@ export default function App() {
   }
 
   const handleAddSave = async (data) => {
+    if (isReadOnly) return
     await addPlant(data)
-    toast.success('🌱 새 식물 등록 완료!', {
-      style: { borderRadius: '14px', fontWeight: 600 },
-    })
+    toast.success('🌱 새 식물 등록 완료!', { style: { borderRadius: '14px', fontWeight: 600 } })
   }
 
   const handleEditSave = async (id, data) => {
+    if (isReadOnly) return
     await updatePlant(id, data)
     toast.success('✅ 수정 완료!')
   }
 
   const handleDeleteConfirm = async (plant) => {
+    if (isReadOnly) return
     await deletePlant(plant)
     toast.success(`🗑️ ${plant.nickname} 삭제됨`)
   }
@@ -72,7 +68,6 @@ export default function App() {
 
       {/* ── 헤더 ── */}
       <div className="bg-[#1A3528] pb-8 pt-12 px-5 rounded-b-[32px] relative overflow-hidden">
-        {/* 배경 장식 */}
         <div className="absolute -top-10 -right-10 w-44 h-44 rounded-full bg-white/5 pointer-events-none" />
         <div className="absolute top-16 -right-4 w-28 h-28 rounded-full bg-white/5 pointer-events-none" />
 
@@ -82,17 +77,29 @@ export default function App() {
               <p className="text-[#86EFAC] text-xs font-semibold tracking-widest uppercase mb-1">
                 🌿 PlantSync
               </p>
-              <h1 className="text-white text-2xl font-extrabold leading-tight">
-                {getGreeting()},<br />
-                <span className="text-[#86EFAC]">{currentUserName}</span>님!
-              </h1>
+              {isReadOnly ? (
+                <h1 className="text-white text-2xl font-extrabold leading-tight">
+                  우리 집 식물들
+                  <span className="ml-2 inline-flex items-center gap-1 text-sm font-semibold
+                                   bg-white/10 text-white/50 px-2.5 py-0.5 rounded-full align-middle">
+                    <Lock size={11} /> 읽기 전용
+                  </span>
+                </h1>
+              ) : (
+                <h1 className="text-white text-2xl font-extrabold leading-tight">
+                  {getGreeting()},<br />
+                  <span className="text-[#86EFAC]">{currentUserName}</span>님!
+                </h1>
+              )}
             </div>
 
-            {/* 설정 버튼만 */}
-            <button onClick={() => setShowSettings(true)}
-                    className="glass w-10 h-10 rounded-full flex items-center justify-center text-white/70 hover:text-white transition-all mt-1">
-              <Settings size={18} />
-            </button>
+            {/* 설정 버튼 — 읽기 전용이면 숨김 */}
+            {!isReadOnly && (
+              <button onClick={() => setShowSettings(true)}
+                      className="glass w-10 h-10 rounded-full flex items-center justify-center text-white/70 hover:text-white transition-all mt-1">
+                <Settings size={18} />
+              </button>
+            )}
           </div>
 
           {/* 통계 */}
@@ -145,13 +152,17 @@ export default function App() {
               🪴
             </div>
             <div>
-              <p className="font-extrabold text-[#1A1A1A] text-lg">첫 번째 식물을 추가해요</p>
-              <p className="text-[#9CA3AF] text-sm mt-1">사진을 찍으면 AI가 이름을 찾아드려요</p>
+              <p className="font-extrabold text-[#1A1A1A] text-lg">등록된 식물이 없어요</p>
+              <p className="text-[#9CA3AF] text-sm mt-1">
+                {isReadOnly ? '아직 등록된 식물이 없습니다' : '사진을 찍으면 AI가 이름을 찾아드려요'}
+              </p>
             </div>
-            <button onClick={() => setShowAdd(true)}
-                    className="flex items-center gap-2 bg-[#1A3528] text-white font-bold px-6 py-3 rounded-2xl text-sm active:scale-95 transition-transform">
-              <Plus size={18} /> 식물 추가하기
-            </button>
+            {!isReadOnly && (
+              <button onClick={() => setShowAdd(true)}
+                      className="flex items-center gap-2 bg-[#1A3528] text-white font-bold px-6 py-3 rounded-2xl text-sm active:scale-95 transition-transform">
+                <Plus size={18} /> 식물 추가하기
+              </button>
+            )}
           </div>
         )}
 
@@ -162,6 +173,7 @@ export default function App() {
                 key={plant.id}
                 plant={plant}
                 currentUserName={currentUserName}
+                isReadOnly={isReadOnly}
                 onWater={handleWater}
                 onEdit={p => setEditTarget(p)}
                 onDelete={p => setDeleteTarget(p)}
@@ -171,27 +183,26 @@ export default function App() {
         )}
       </main>
 
-      {/* ── FAB ── */}
-      {plants.length > 0 && (
+      {/* FAB — 읽기 전용이면 숨김 */}
+      {!isReadOnly && plants.length > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
           <button onClick={() => setShowAdd(true)}
                   className="flex items-center gap-2 bg-[#1A3528] hover:bg-[#2D5A40] text-white font-bold pl-5 pr-6 py-3.5 rounded-full shadow-xl shadow-[#1A3528]/30 transition-all active:scale-95">
-            <Plus size={20} />
-            식물 추가
+            <Plus size={20} /> 식물 추가
           </button>
         </div>
       )}
 
-      {/* ── 모달 ── */}
-      {showAdd      && <AddPlantModal      onClose={() => setShowAdd(false)}      onSave={handleAddSave} />}
-      {editTarget   && <EditPlantModal     plant={editTarget}   onClose={() => setEditTarget(null)}   onSave={handleEditSave} />}
-      {deleteTarget && <DeleteConfirmModal plant={deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDeleteConfirm} />}
-      {showSettings && (
+      {/* 모달 — 읽기 전용이면 열리지 않음 */}
+      {!isReadOnly && showAdd      && <AddPlantModal      onClose={() => setShowAdd(false)}      onSave={handleAddSave} />}
+      {!isReadOnly && editTarget   && <EditPlantModal     plant={editTarget}   onClose={() => setEditTarget(null)}   onSave={handleEditSave} />}
+      {!isReadOnly && deleteTarget && <DeleteConfirmModal plant={deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDeleteConfirm} />}
+      {!isReadOnly && showSettings && (
         <SettingsModal
           currentUserName={currentUserName}
-          isDeviceDetected={isDeviceDetected}
+          isDeviceDetected={true}
           onClose={() => setShowSettings(false)}
-          onChangeName={setName}
+          onChangeName={() => {}}
         />
       )}
     </div>
