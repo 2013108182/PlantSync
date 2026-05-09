@@ -5,17 +5,38 @@
 @layer base {
   * {
     -webkit-tap-highlight-color: transparent;
+    box-sizing: border-box;
   }
 
   body {
-    @apply bg-gray-50 text-gray-900;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #F2F1EC;
+    color: #1A1A1A;
     overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
   }
 }
 
 @layer utilities {
-  .safe-pb {
-    padding-bottom: env(safe-area-inset-bottom, 16px);
+  .glass {
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .card-shadow {
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+
+  .card-shadow-hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10), 0 2px 6px rgba(0, 0, 0, 0.06);
   }
 }
+
+/* 스크롤바 숨김 */
+::-webkit-scrollbar { display: none; }
+* { scrollbar-width: none; }
+
+/* 폰트 숫자 tabular */
+.tabular { font-variant-numeric: tabular-nums; }

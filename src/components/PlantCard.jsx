@@ -1,158 +1,119 @@
 import { useState } from 'react'
-import { Droplets, Trash2, Edit3, Clock, User } from 'lucide-react'
-import { getDDay, getNextWateringDate } from '../hooks/usePlants'
+import { Droplets, Trash2, Edit3 } from 'lucide-react'
+import { getDDay } from '../hooks/usePlants'
 
-function formatDate(ts) {
-  if (!ts) return '아직 없음'
-  const d = ts.toDate ? ts.toDate() : new Date(ts)
-  return d.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+function urgencyStyle(dday) {
+  if (dday < 0)  return { bar: '#EF4444', badge: '#FEE2E2', badgeText: '#B91C1C', dayText: '#EF4444', label: `+${Math.abs(dday)}일 지남` }
+  if (dday === 0) return { bar: '#F97316', badge: '#FFEDD5', badgeText: '#C2410C', dayText: '#F97316', label: '오늘!' }
+  if (dday <= 3)  return { bar: '#EAB308', badge: '#FEF9C3', badgeText: '#A16207', dayText: '#CA8A04', label: '곧 줘야해요' }
+  return               { bar: '#22C55E', badge: '#DCFCE7', badgeText: '#15803D', dayText: '#16A34A', label: '상태 양호' }
 }
 
-function DDayBadge({ dday }) {
-  if (dday < 0) {
-    return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">
-        D+{Math.abs(dday)} 지남
-      </span>
-    )
-  }
-  if (dday === 0) {
-    return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-700">
-        오늘 물 주는 날!
-      </span>
-    )
-  }
-  if (dday <= 2) {
-    return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700">
-        D-{dday}
-      </span>
-    )
-  }
-  return (
-    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">
-      D-{dday}
-    </span>
-  )
+function timeAgo(ts) {
+  if (!ts) return null
+  const d    = ts.toDate ? ts.toDate() : new Date(ts)
+  const diff = Math.floor((Date.now() - d) / 86400000)
+  if (diff === 0) return '오늘'
+  if (diff === 1) return '어제'
+  return `${diff}일 전`
 }
 
 export default function PlantCard({ plant, currentUserName, onWater, onDelete, onEdit }) {
   const [watering, setWatering] = useState(false)
-  const dday = getDDay(plant)
-  const isOverdue = dday < 0
-  const nextDate  = getNextWateringDate(plant)
+  const dday  = getDDay(plant)
+  const style = urgencyStyle(dday)
 
   const handleWater = async () => {
     setWatering(true)
-    try {
-      await onWater(plant.id, currentUserName)
-    } finally {
-      setWatering(false)
-    }
+    try { await onWater(plant.id, currentUserName) }
+    finally { setWatering(false) }
   }
 
+  const ddayLabel = dday < 0 ? `D+${Math.abs(dday)}` : dday === 0 ? 'D-Day' : `D-${dday}`
+
   return (
-    <div
-      className={`relative bg-white rounded-2xl shadow-sm border-2 overflow-hidden transition-all duration-200 ${
-        isOverdue ? 'border-red-300 shadow-red-100' : 'border-transparent'
-      }`}
-    >
-      {/* 오버듀 경고 배너 */}
-      {isOverdue && (
-        <div className="bg-red-500 text-white text-center text-xs font-semibold py-1 px-3">
-          💧 물 주는 날이 {Math.abs(dday)}일 지났어요!
-        </div>
-      )}
-
-      <div className="flex gap-3 p-4">
-        {/* 식물 이미지 */}
-        <div className="flex-shrink-0">
-          {plant.imageUrl ? (
-            <img
-              src={plant.imageUrl}
-              alt={plant.nickname}
-              className="w-20 h-20 rounded-xl object-cover"
-            />
-          ) : (
-            <div className="w-20 h-20 rounded-xl bg-primary-50 flex items-center justify-center text-3xl">
-              🌿
-            </div>
-          )}
-        </div>
-
-        {/* 정보 영역 */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <h3 className="font-bold text-gray-900 text-base leading-tight truncate">
-                {plant.nickname}
-              </h3>
-              {plant.species && (
-                <p className="text-xs text-gray-400 mt-0.5 truncate">{plant.species}</p>
-              )}
-            </div>
-            <DDayBadge dday={dday} />
-          </div>
-
-          {/* 급수 정보 */}
-          <div className="mt-2 space-y-1">
-            <div className="flex items-center gap-1.5 text-xs text-gray-500">
-              <Clock size={12} className="text-gray-400" />
-              <span>주기: {plant.wateringCycle}일마다</span>
-            </div>
-
-            {plant.lastWateredAt && (
-              <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                <User size={12} className="text-gray-400" />
-                <span>
-                  <span className="font-semibold text-primary-600">{plant.lastWateredBy}</span>
-                  {' '}가 마지막으로 줌 · {formatDate(plant.lastWateredAt)}
-                </span>
+    <div className="bg-white rounded-2xl card-shadow overflow-hidden transition-all duration-200 active:scale-[0.99]"
+         style={{ borderLeft: `4px solid ${style.bar}` }}>
+      <div className="p-4">
+        <div className="flex gap-3">
+          {/* 식물 이미지 */}
+          <div className="flex-shrink-0">
+            {plant.imageUrl ? (
+              <img src={plant.imageUrl} alt={plant.nickname}
+                   className="w-[68px] h-[68px] rounded-xl object-cover" />
+            ) : (
+              <div className="w-[68px] h-[68px] rounded-xl flex items-center justify-center text-3xl"
+                   style={{ background: style.badge }}>
+                🌿
               </div>
             )}
+          </div>
 
-            {!plant.lastWateredAt && (
-              <p className="text-xs text-gray-400 italic">아직 물을 준 기록이 없어요</p>
-            )}
+          {/* 정보 */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="font-bold text-[#1A1A1A] text-[15px] leading-snug truncate">
+                  {plant.nickname}
+                </p>
+                {plant.species && (
+                  <p className="text-[11px] text-[#9CA3AF] mt-0.5 truncate">{plant.species}</p>
+                )}
+              </div>
+
+              {/* D-Day 뱃지 */}
+              <div className="flex-shrink-0 flex flex-col items-end gap-1">
+                <span className="text-2xl font-extrabold tabular leading-none"
+                      style={{ color: style.dayText }}>
+                  {ddayLabel}
+                </span>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                      style={{ background: style.badge, color: style.badgeText }}>
+                  {style.label}
+                </span>
+              </div>
+            </div>
+
+            {/* 메타 정보 */}
+            <div className="mt-2.5 flex items-center justify-between">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[11px] text-[#9CA3AF]">
+                  💧 {plant.wateringCycle}일마다
+                </span>
+                {plant.lastWateredAt ? (
+                  <span className="text-[11px] text-[#6B7280]">
+                    <span className="font-semibold text-[#4B5563]">{plant.lastWateredBy}</span>
+                    {'가 '}
+                    {timeAgo(plant.lastWateredAt)} 물 줌
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-[#D1D5DB] italic">물 준 기록 없음</span>
+                )}
+              </div>
+
+              {/* 수정/삭제 */}
+              <div className="flex gap-1">
+                <button onClick={() => onEdit(plant)}
+                        className="w-7 h-7 rounded-lg bg-[#F3F4F6] flex items-center justify-center text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
+                  <Edit3 size={13} />
+                </button>
+                <button onClick={() => onDelete(plant)}
+                        className="w-7 h-7 rounded-lg bg-[#F3F4F6] flex items-center justify-center text-[#9CA3AF] hover:text-red-400 transition-colors">
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* 액션 버튼 영역 */}
-      <div className="flex items-center gap-2 px-4 pb-4">
-        {/* 물 주기 버튼 */}
-        <button
-          onClick={handleWater}
-          disabled={watering}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 ${
-            isOverdue
-              ? 'bg-red-500 hover:bg-red-600 text-white'
-              : 'bg-primary-500 hover:bg-primary-600 text-white'
-          } disabled:opacity-60 disabled:cursor-not-allowed active:scale-95`}
-        >
-          <Droplets size={16} className={watering ? 'animate-bounce' : ''} />
-          {watering ? '기록 중...' : '물 줬어요! 💧'}
-        </button>
-
-        {/* 수정 버튼 */}
-        <button
-          onClick={() => onEdit(plant)}
-          className="p-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-all active:scale-95"
-          aria-label="수정"
-        >
-          <Edit3 size={16} />
-        </button>
-
-        {/* 삭제 버튼 */}
-        <button
-          onClick={() => onDelete(plant)}
-          className="p-2.5 rounded-xl bg-gray-100 hover:bg-red-100 text-gray-400 hover:text-red-500 transition-all active:scale-95"
-          aria-label="삭제"
-        >
-          <Trash2 size={16} />
-        </button>
-      </div>
+      {/* 물주기 버튼 */}
+      <button onClick={handleWater} disabled={watering}
+              className="w-full py-3 flex items-center justify-center gap-2 font-semibold text-[13px] transition-all duration-200 disabled:opacity-60 active:brightness-95"
+              style={{ background: style.badge, color: style.badgeText }}>
+        <Droplets size={15} className={watering ? 'animate-bounce' : ''} />
+        {watering ? '기록 중...' : `물 줬어요 💧`}
+      </button>
     </div>
   )
 }

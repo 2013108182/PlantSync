@@ -1,42 +1,21 @@
-import { useState, useEffect } from 'react'
+// 기기 User-Agent로 사용자 자동 감지
+// 갤럭시 S24 (SM-S921) → 지수 / 갤럭시 S23 Ultra (SM-S918) → 남식
+// 그 외 기기 → 읽기 전용 (isReadOnly: true)
 
-const STORAGE_KEY = 'plantsync_user'
-const NAMES_KEY   = 'plantsync_user_names'
+const DEVICE_MAP = [
+  { match: 'SM-S921', name: '지수' },   // Galaxy S24
+  { match: 'SM-S918', name: '남식' },   // Galaxy S23 Ultra
+]
 
-const DEFAULT_NAMES = { user1: '아내', user2: '남편' }
+function detectUser() {
+  const ua = navigator.userAgent
+  for (const { match, name } of DEVICE_MAP) {
+    if (ua.includes(match)) return { name, isReadOnly: false }
+  }
+  return { name: '방문자', isReadOnly: true }
+}
 
 export function useUser() {
-  const [activeUser, setActiveUser] = useState(() => {
-    return localStorage.getItem(STORAGE_KEY) || 'user1'
-  })
-
-  const [userNames, setUserNames] = useState(() => {
-    try {
-      const stored = localStorage.getItem(NAMES_KEY)
-      return stored ? JSON.parse(stored) : DEFAULT_NAMES
-    } catch {
-      return DEFAULT_NAMES
-    }
-  })
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, activeUser)
-  }, [activeUser])
-
-  useEffect(() => {
-    localStorage.setItem(NAMES_KEY, JSON.stringify(userNames))
-  }, [userNames])
-
-  const toggleUser = () => {
-    setActiveUser((prev) => (prev === 'user1' ? 'user2' : 'user1'))
-  }
-
-  const updateUserNames = (newNames) => {
-    setUserNames((prev) => ({ ...prev, ...newNames }))
-  }
-
-  // 현재 활성 유저의 표시 이름
-  const currentUserName = userNames[activeUser]
-
-  return { activeUser, currentUserName, userNames, toggleUser, updateUserNames }
+  const { name: currentUserName, isReadOnly } = detectUser()
+  return { currentUserName, isReadOnly }
 }

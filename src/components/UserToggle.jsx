@@ -1,42 +1,28 @@
 import { Settings } from 'lucide-react'
 
-export default function UserToggle({ activeUser, currentUserName, userNames, onToggle, onSettingsOpen }) {
-  const otherUser     = activeUser === 'user1' ? 'user2' : 'user1'
-  const otherUserName = userNames[otherUser]
-
+export default function UserToggle({ activeUser, userNames, onToggle, onSettingsOpen }) {
   return (
     <div className="flex items-center gap-2">
-      {/* 유저 토글 버튼 */}
-      <div className="flex items-center bg-white/20 rounded-full p-1 gap-1">
-        <button
-          onClick={activeUser === 'user2' ? onToggle : undefined}
-          className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200 ${
-            activeUser === 'user1'
-              ? 'bg-white text-primary-700 shadow-sm'
-              : 'text-white/80 hover:text-white'
-          }`}
-        >
-          {userNames.user1}
-        </button>
-        <button
-          onClick={activeUser === 'user1' ? onToggle : undefined}
-          className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200 ${
-            activeUser === 'user2'
-              ? 'bg-white text-primary-700 shadow-sm'
-              : 'text-white/80 hover:text-white'
-          }`}
-        >
-          {userNames.user2}
-        </button>
+      <div className="glass rounded-full p-1 flex gap-1">
+        {['user1', 'user2'].map((u) => (
+          <button
+            key={u}
+            onClick={() => u !== activeUser && onToggle()}
+            className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-300 ${
+              activeUser === u
+                ? 'bg-white text-[#1A3528] shadow-sm'
+                : 'text-white/70 hover:text-white'
+            }`}
+          >
+            {userNames[u]}
+          </button>
+        ))}
       </div>
-
-      {/* 설정 버튼 */}
       <button
         onClick={onSettingsOpen}
-        className="p-2 rounded-full text-white/80 hover:text-white hover:bg-white/20 transition-all"
-        aria-label="설정"
+        className="glass w-9 h-9 rounded-full flex items-center justify-center text-white/70 hover:text-white transition-all"
       >
-        <Settings size={18} />
+        <Settings size={16} />
       </button>
     </div>
   )
