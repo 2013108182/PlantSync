@@ -11,10 +11,10 @@ const DEVICE_MAP = [
 function matchDevice(model = '', ua = '') {
   for (const { match, name } of DEVICE_MAP) {
     if (model.includes(match) || ua.includes(match)) {
-      return { name, isReadOnly: false }
+      return { currentUserName: name, isReadOnly: false }
     }
   }
-  return { name: '방문자', isReadOnly: true }
+  return { currentUserName: '방문자', isReadOnly: true }
 }
 
 async function detectUser() {
