@@ -1,8 +1,14 @@
 import { useState, useRef } from 'react'
 import { X, Camera, Loader, Sparkles, ChevronDown, ChevronUp, Check, Search } from 'lucide-react'
-import { identifyPlant, getWateringCycle, searchWateringCycleByName } from '../api/plantApi'
+import { identifyPlant, getWateringCycle } from '../api/plantApi'
 
 const STEPS = { UPLOAD: 'upload', IDENTIFYING: 'identifying', CONFIRM: 'confirm', SAVING: 'saving' }
+
+// 오늘 날짜를 <input type="date"> 기본값 형식(YYYY-MM-DD)으로 반환
+function todayString() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 export default function AddPlantModal({ onClose, onSave }) {
   const [step, setStep]                   = useState(STEPS.UPLOAD)
@@ -10,33 +16,17 @@ export default function AddPlantModal({ onClose, onSave }) {
   const [imagePreview, setImagePreview]   = useState(null)
   const [suggestions, setSuggestions]     = useState([])
   const [showAllSug, setShowAllSug]       = useState(false)
-  const [form, setForm]                   = useState({ nickname: '', species: '', wateringCycle: 7 })
-  const [error, setError]                 = useState('')
-  const [cycleSearching, setCycleSearching] = useState(false)
-  const [cycleHint, setCycleHint]           = useState('')   // "〇〇 기준 검색됨" 안내
-  const fileInputRef                        = useRef()
-
-  // 이름 직접 입력 후 급수 주기 자동 검색
-  const handleCycleSearch = async () => {
-    const query = form.nickname.trim() || form.species.trim()
-    if (!query) { setError('식물 이름을 먼저 입력해주세요.'); return }
-    setCycleSearching(true)
-    setCycleHint('')
-    setError('')
-    try {
-      const result = await searchWateringCycleByName(query)
-      if (result?.cycle) {
-        setForm(f => ({ ...f, wateringCycle: result.cycle }))
-        setCycleHint(`"${result.translatedName}" 기준으로 검색됐어요`)
-      } else {
-        setError('일치하는 식물을 찾지 못했어요. 영문 이름으로 다시 시도해보세요.')
-      }
-    } catch (e) {
-      setError('검색 실패: ' + e.message)
-    } finally {
-      setCycleSearching(false)
-    }
-  }
+  const [form, setForm]                   = useState({
+    nickname:      '',
+    species:       '',
+    wateringCycle: 7,
+    lastWateredAt: todayString(),   // ① 기본값: 오늘
+  })
+  const [cycleSearchInput, setCycleSearchInput] = useState('')   // ② 학명 직접 검색 input
+  const [cycleSearching, setCycleSearching]     = useState(false)
+  const [cycleHint, setCycleHint]               = useState('')
+  const [error, setError]                       = useState('')
+  const fileInputRef                            = useRef()
 
   const handleImageSelect = (e) => {
     const file = e.target.files?.[0]
@@ -46,6 +36,7 @@ export default function AddPlantModal({ onClose, onSave }) {
     setError('')
   }
 
+  // Plant.id AI 인식
   const handleIdentify = async () => {
     if (!imageFile) { setError('사진을 먼저 선택해주세요.'); return }
     setStep(STEPS.IDENTIFYING)
@@ -55,11 +46,14 @@ export default function AddPlantModal({ onClose, onSave }) {
       setSuggestions(result.allSuggestions || [])
       let cycle = 7
       try {
-        // 급수 주기 조회는 영문 학명으로 (Perenual은 영문만 지원)
         const w = await getWateringCycle(result.scientificName)
-        if (w?.cycle) cycle = w.cycle
+        if (w?.cycle) {
+          cycle = w.cycle
+          setCycleHint(`${w.matchedName} 기준 · ${w.cycleLabel}`)
+        }
       } catch {}
-      setForm({ nickname: result.commonName, species: result.scientificName, wateringCycle: cycle })
+      setCycleSearchInput(result.scientificName || '')
+      setForm(f => ({ ...f, nickname: result.commonName, species: result.scientificName, wateringCycle: cycle }))
       setStep(STEPS.CONFIRM)
     } catch (e) {
       setError(e.message || '식물 인식 실패. API 키를 확인해주세요.')
@@ -67,20 +61,53 @@ export default function AddPlantModal({ onClose, onSave }) {
     }
   }
 
+  // AI 후보 선택
   const selectSuggestion = async (s) => {
     setForm(f => ({ ...f, nickname: s.name, species: s.scientific }))
+    setCycleSearchInput(s.scientific || s.name)
+    setCycleHint('')
     try {
-      // 후보 선택 시에도 학명으로 급수 주기 재조회
       const w = await getWateringCycle(s.scientific || s.name)
-      if (w?.cycle) setForm(f => ({ ...f, wateringCycle: w.cycle }))
+      if (w?.cycle) {
+        setForm(f => ({ ...f, wateringCycle: w.cycle }))
+        setCycleHint(`${w.matchedName} 기준 · ${w.cycleLabel}`)
+      }
     } catch {}
+  }
+
+  // ② 학명/영문명 직접 검색
+  const handleCycleSearch = async () => {
+    const query = cycleSearchInput.trim()
+    if (!query) { setError('학명 또는 영문 이름을 입력해주세요. (예: Monstera deliciosa)'); return }
+    setCycleSearching(true)
+    setCycleHint('')
+    setError('')
+    try {
+      const result = await getWateringCycle(query)
+      if (result?.cycle) {
+        setForm(f => ({ ...f, wateringCycle: result.cycle }))
+        setCycleHint(`"${result.matchedName}" 기준 · ${result.cycleLabel}`)
+      } else {
+        setError(`"${query}"에 해당하는 식물을 찾지 못했어요. 학명을 다시 확인해주세요.`)
+      }
+    } catch (e) {
+      setError('검색 실패: ' + e.message)
+    } finally {
+      setCycleSearching(false)
+    }
   }
 
   const handleSave = async () => {
     if (!form.nickname.trim()) { setError('식물 이름을 입력해주세요.'); return }
     setStep(STEPS.SAVING)
     try {
-      await onSave({ nickname: form.nickname.trim(), species: form.species.trim(), imageFile, wateringCycle: Number(form.wateringCycle) || 7 })
+      await onSave({
+        nickname:      form.nickname.trim(),
+        species:       form.species.trim(),
+        imageFile,
+        wateringCycle: Number(form.wateringCycle) || 7,
+        lastWateredAt: form.lastWateredAt || null,   // ① 날짜 전달
+      })
       onClose()
     } catch (e) {
       setError(e.message || '저장 실패')
@@ -92,17 +119,17 @@ export default function AddPlantModal({ onClose, onSave }) {
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm">
       <div className="w-full max-w-md bg-[#F2F1EC] rounded-t-[28px] shadow-2xl max-h-[92vh] overflow-y-auto">
 
-        {/* 핸들 */}
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 bg-[#D1D5DB] rounded-full" />
         </div>
 
-        {/* 헤더 */}
         <div className="flex items-center justify-between px-5 py-4">
           <div>
             <h2 className="text-[17px] font-extrabold text-[#1A1A1A]">새 식물 등록</h2>
             <p className="text-[11px] text-[#9CA3AF] mt-0.5">
-              {step === STEPS.UPLOAD || step === STEPS.IDENTIFYING ? 'AI가 식물을 인식해드려요' : '정보를 확인하고 수정해주세요'}
+              {step === STEPS.UPLOAD || step === STEPS.IDENTIFYING
+                ? 'AI가 식물을 인식해드려요'
+                : '정보를 확인하고 수정해주세요'}
             </p>
           </div>
           <button onClick={onClose}
@@ -209,55 +236,68 @@ export default function AddPlantModal({ onClose, onSave }) {
 
               {/* 폼 */}
               <div className="bg-white rounded-2xl p-4 card-shadow space-y-4">
+
+                {/* 식물 별명 */}
                 <div>
                   <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5">
                     식물 별명 *
                   </label>
                   <input type="text" value={form.nickname}
-                         onChange={e => { setForm(f => ({ ...f, nickname: e.target.value })); setCycleHint('') }}
+                         onChange={e => setForm(f => ({ ...f, nickname: e.target.value }))}
                          placeholder="예: 거실 몬스테라"
                          className="w-full px-4 py-3 bg-[#F2F1EC] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1A3528]" />
                 </div>
+
+                {/* ① 마지막 물 준 날 */}
                 <div>
                   <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5">
-                    식물 종류
+                    마지막으로 물 준 날
                   </label>
-                  <input type="text" value={form.species}
-                         onChange={e => setForm(f => ({ ...f, species: e.target.value }))}
-                         placeholder="예: Monstera deliciosa"
+                  <input type="date" value={form.lastWateredAt}
+                         max={todayString()}
+                         onChange={e => setForm(f => ({ ...f, lastWateredAt: e.target.value }))}
                          className="w-full px-4 py-3 bg-[#F2F1EC] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1A3528]" />
+                  <p className="text-[11px] text-[#9CA3AF] mt-1">기본값은 오늘이에요</p>
                 </div>
+
+                {/* ② 급수 주기 + 학명 직접 검색 */}
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
-                      급수 주기
-                    </label>
-                    {/* 이름으로 급수 주기 자동 검색 버튼 */}
+                  <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-2">
+                    급수 주기
+                  </label>
+
+                  {/* 학명 검색 row */}
+                  <div className="flex gap-2 mb-2">
+                    <input type="text" value={cycleSearchInput}
+                           onChange={e => setCycleSearchInput(e.target.value)}
+                           onKeyDown={e => e.key === 'Enter' && handleCycleSearch()}
+                           placeholder="학명 또는 영문 이름 (예: Monstera)"
+                           className="flex-1 px-3 py-2 bg-[#F2F1EC] rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#1A3528] placeholder:text-[#C4C4C4]" />
                     <button onClick={handleCycleSearch} disabled={cycleSearching}
-                            className="flex items-center gap-1.5 text-[11px] font-bold text-[#1A3528] bg-[#F2F1EC] px-2.5 py-1 rounded-lg disabled:opacity-50 active:scale-95 transition-transform">
-                      {cycleSearching
-                        ? <><Loader size={11} className="animate-spin" /> 검색 중...</>
-                        : <><Search size={11} /> 이름으로 자동 검색</>}
+                            className="flex items-center gap-1 px-3 py-2 bg-[#1A3528] text-white font-bold rounded-xl text-xs disabled:opacity-50 active:scale-95 transition-transform flex-shrink-0">
+                      {cycleSearching ? <Loader size={12} className="animate-spin" /> : <Search size={12} />}
+                      {cycleSearching ? '검색 중' : '검색'}
                     </button>
                   </div>
+
                   {/* 검색 결과 힌트 */}
                   {cycleHint && (
-                    <p className="text-[11px] text-[#16A34A] font-medium mb-2">✓ {cycleHint}</p>
+                    <p className="text-[11px] text-[#16A34A] font-semibold mb-2">✓ {cycleHint}</p>
                   )}
+
+                  {/* 슬라이더 + 숫자 입력 */}
                   <div className="flex items-center gap-3">
                     <input type="range" min="1" max="60" value={form.wateringCycle}
-                           onChange={e => setForm(f => ({ ...f, wateringCycle: e.target.value }))}
+                           onChange={e => { setForm(f => ({ ...f, wateringCycle: e.target.value })); setCycleHint('') }}
                            className="flex-1 accent-[#1A3528]" />
                     <div className="flex items-center gap-1.5">
                       <input type="number" min="1" max="365" value={form.wateringCycle}
-                             onChange={e => setForm(f => ({ ...f, wateringCycle: e.target.value }))}
+                             onChange={e => { setForm(f => ({ ...f, wateringCycle: e.target.value })); setCycleHint('') }}
                              className="w-14 px-2 py-2 bg-[#F2F1EC] rounded-xl text-center text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#1A3528]" />
                       <span className="text-sm text-[#9CA3AF]">일</span>
                     </div>
                   </div>
-                  <p className="text-[11px] text-[#9CA3AF] mt-1.5">
-                    슬라이더로 직접 조정도 가능해요
-                  </p>
+                  <p className="text-[11px] text-[#9CA3AF] mt-1">슬라이더로 직접 조정도 가능해요</p>
                 </div>
               </div>
 

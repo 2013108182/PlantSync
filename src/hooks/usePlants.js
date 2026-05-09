@@ -7,6 +7,7 @@ import {
   deleteDoc,
   doc,
   serverTimestamp,
+  Timestamp,
   query,
 } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -55,17 +56,19 @@ export function usePlants() {
   }, [])
 
   // 식물 추가
-  const addPlant = async ({ nickname, species, imageFile, wateringCycle }) => {
+  const addPlant = async ({ nickname, species, imageFile, wateringCycle, lastWateredAt }) => {
     let imageUrl = ''
     if (imageFile) {
       imageUrl = await uploadToImgBB(imageFile)
     }
+    // lastWateredAt: Date 객체 → Firestore Timestamp로 변환
+    const wateredTimestamp = lastWateredAt ? Timestamp.fromDate(new Date(lastWateredAt)) : null
     await addDoc(collection(db, 'plants'), {
       nickname,
       species,
       imageUrl,
       wateringCycle: Number(wateringCycle) || 7,
-      lastWateredAt: null,
+      lastWateredAt: wateredTimestamp,
       lastWateredBy: null,
       createdAt: serverTimestamp(),
     })

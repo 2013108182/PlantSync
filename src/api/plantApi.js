@@ -71,42 +71,13 @@ async function translateToKorean(text) {
   }
 }
 
-// 한국어(또는 임의 언어) → 영어 번역
-async function translateToEnglish(text) {
-  if (!text) return text
-  try {
-    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=ko|en`
-    const res  = await fetch(url)
-    const data = await res.json()
-    const translated = data?.responseData?.translatedText
-    if (!translated || translated.toLowerCase() === text.toLowerCase()) return text
-    return translated
-  } catch {
-    return text
-  }
-}
-
-// 한국어 식물 이름 → 영어 번역 → Perenual 급수 주기 조회
-// 직접 입력 폼에서 사용
-export async function searchWateringCycleByName(koreanOrAnyName) {
-  // 1. 한국어 → 영어로 번역
-  const englishName = await translateToEnglish(koreanOrAnyName)
-
-  // 2. 영어 이름으로 Perenual 검색
-  const result = await getWateringCycle(englishName)
-
-  return {
-    ...result,
-    translatedName: englishName,   // 어떤 영어 이름으로 검색했는지 UI에 표시용
-  }
-}
-
-// Perenual API - 급수 주기 조회 (검색은 영문 학명으로)
-export async function getWateringCycle(plantNameEn) {
+// Perenual API - 학명/영문 이름으로 급수 주기 직접 검색
+// 예: "Monstera deliciosa", "Pothos", "Cactus"
+export async function getWateringCycle(scientificOrEnglishName) {
   const apiKey = import.meta.env.VITE_PERENUAL_API_KEY
   if (!apiKey) throw new Error('Perenual API 키가 설정되지 않았습니다.')
 
-  const url = `https://perenual.com/api/species-list?key=${apiKey}&q=${encodeURIComponent(plantNameEn)}&page=1`
+  const url = `https://perenual.com/api/species-list?key=${apiKey}&q=${encodeURIComponent(scientificOrEnglishName)}&page=1`
   const response = await fetch(url)
   if (!response.ok) throw new Error(`Perenual 오류: ${response.status}`)
 
@@ -115,10 +86,18 @@ export async function getWateringCycle(plantNameEn) {
   if (results.length === 0) return null
 
   const plant = results[0]
-  const cycleMap = { frequent: 3, average: 7, minimum: 14, none: 30 }
-  const cycle = cycleMap[plant.watering?.toLowerCase()] || 7
 
-  return { cycle, wateringText: plant.watering }
+  const cycleMap    = { frequent: 3, average: 7, minimum: 14, none: 30 }
+  const cycleKorMap = { frequent: '자주 (3일)', average: '보통 (7일)', minimum: '적게 (14일)', none: '거의 안 줌 (30일)' }
+  const key         = plant.watering?.toLowerCase() || ''
+  const cycle       = cycleMap[key] || 7
+  const cycleLabel  = cycleKorMap[key] || `${cycle}일`
+
+  return {
+    cycle,
+    cycleLabel,                              // UI 표시용 한국어 레이블
+    matchedName: plant.common_name || scientificOrEnglishName,  // 매칭된 식물명
+  }
 }
 
 // 헬퍼: File → base64
