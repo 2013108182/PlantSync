@@ -8,10 +8,9 @@ import {
   doc,
   serverTimestamp,
   query,
-  orderBy,
 } from 'firebase/firestore'
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
-import { db, storage } from '../firebase'
+import { db } from '../firebase'
+import { uploadToImgBB } from '../api/imageApi'
 
 // 다음 급수일 계산 (lastWateredAt + wateringCycle)
 export const getNextWateringDate = (plant) => {
@@ -55,19 +54,11 @@ export function usePlants() {
     return () => unsubscribe()
   }, [])
 
-  // 사진 업로드 → Storage URL 반환
-  const uploadImage = async (file) => {
-    const filename = `plants/${Date.now()}_${file.name}`
-    const storageRef = ref(storage, filename)
-    await uploadBytes(storageRef, file)
-    return getDownloadURL(storageRef)
-  }
-
   // 식물 추가
   const addPlant = async ({ nickname, species, imageFile, wateringCycle }) => {
     let imageUrl = ''
     if (imageFile) {
-      imageUrl = await uploadImage(imageFile)
+      imageUrl = await uploadToImgBB(imageFile)
     }
     await addDoc(collection(db, 'plants'), {
       nickname,
@@ -95,18 +86,8 @@ export function usePlants() {
     await updateDoc(plantRef, updates)
   }
 
-  // 식물 삭제
+  // 식물 삭제 (ImgBB는 API로 삭제 불가 → Firestore 문서만 삭제)
   const deletePlant = async (plant) => {
-    // Storage 이미지 삭제 시도
-    if (plant.imageUrl) {
-      try {
-        const imageRef = ref(storage, plant.imageUrl)
-        await deleteObject(imageRef)
-      } catch (e) {
-        // 이미지 삭제 실패해도 계속 진행
-        console.warn('이미지 삭제 실패:', e)
-      }
-    }
     await deleteDoc(doc(db, 'plants', plant.id))
   }
 
