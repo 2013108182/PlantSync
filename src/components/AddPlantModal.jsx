@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
-import { X, Camera, Loader, Sparkles, ChevronDown, ChevronUp, Check } from 'lucide-react'
-import { identifyPlant, getWateringCycle } from '../api/plantApi'
+import { X, Camera, Loader, Sparkles, ChevronDown, ChevronUp, Check, Search } from 'lucide-react'
+import { identifyPlant, getWateringCycle, searchWateringCycleByName } from '../api/plantApi'
 
 const STEPS = { UPLOAD: 'upload', IDENTIFYING: 'identifying', CONFIRM: 'confirm', SAVING: 'saving' }
 
@@ -12,7 +12,31 @@ export default function AddPlantModal({ onClose, onSave }) {
   const [showAllSug, setShowAllSug]       = useState(false)
   const [form, setForm]                   = useState({ nickname: '', species: '', wateringCycle: 7 })
   const [error, setError]                 = useState('')
-  const fileInputRef                      = useRef()
+  const [cycleSearching, setCycleSearching] = useState(false)
+  const [cycleHint, setCycleHint]           = useState('')   // "〇〇 기준 검색됨" 안내
+  const fileInputRef                        = useRef()
+
+  // 이름 직접 입력 후 급수 주기 자동 검색
+  const handleCycleSearch = async () => {
+    const query = form.nickname.trim() || form.species.trim()
+    if (!query) { setError('식물 이름을 먼저 입력해주세요.'); return }
+    setCycleSearching(true)
+    setCycleHint('')
+    setError('')
+    try {
+      const result = await searchWateringCycleByName(query)
+      if (result?.cycle) {
+        setForm(f => ({ ...f, wateringCycle: result.cycle }))
+        setCycleHint(`"${result.translatedName}" 기준으로 검색됐어요`)
+      } else {
+        setError('일치하는 식물을 찾지 못했어요. 영문 이름으로 다시 시도해보세요.')
+      }
+    } catch (e) {
+      setError('검색 실패: ' + e.message)
+    } finally {
+      setCycleSearching(false)
+    }
+  }
 
   const handleImageSelect = (e) => {
     const file = e.target.files?.[0]
@@ -190,7 +214,7 @@ export default function AddPlantModal({ onClose, onSave }) {
                     식물 별명 *
                   </label>
                   <input type="text" value={form.nickname}
-                         onChange={e => setForm(f => ({ ...f, nickname: e.target.value }))}
+                         onChange={e => { setForm(f => ({ ...f, nickname: e.target.value })); setCycleHint('') }}
                          placeholder="예: 거실 몬스테라"
                          className="w-full px-4 py-3 bg-[#F2F1EC] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1A3528]" />
                 </div>
@@ -204,9 +228,22 @@ export default function AddPlantModal({ onClose, onSave }) {
                          className="w-full px-4 py-3 bg-[#F2F1EC] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1A3528]" />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-2">
-                    급수 주기
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
+                      급수 주기
+                    </label>
+                    {/* 이름으로 급수 주기 자동 검색 버튼 */}
+                    <button onClick={handleCycleSearch} disabled={cycleSearching}
+                            className="flex items-center gap-1.5 text-[11px] font-bold text-[#1A3528] bg-[#F2F1EC] px-2.5 py-1 rounded-lg disabled:opacity-50 active:scale-95 transition-transform">
+                      {cycleSearching
+                        ? <><Loader size={11} className="animate-spin" /> 검색 중...</>
+                        : <><Search size={11} /> 이름으로 자동 검색</>}
+                    </button>
+                  </div>
+                  {/* 검색 결과 힌트 */}
+                  {cycleHint && (
+                    <p className="text-[11px] text-[#16A34A] font-medium mb-2">✓ {cycleHint}</p>
+                  )}
                   <div className="flex items-center gap-3">
                     <input type="range" min="1" max="60" value={form.wateringCycle}
                            onChange={e => setForm(f => ({ ...f, wateringCycle: e.target.value }))}
@@ -218,6 +255,9 @@ export default function AddPlantModal({ onClose, onSave }) {
                       <span className="text-sm text-[#9CA3AF]">일</span>
                     </div>
                   </div>
+                  <p className="text-[11px] text-[#9CA3AF] mt-1.5">
+                    슬라이더로 직접 조정도 가능해요
+                  </p>
                 </div>
               </div>
 

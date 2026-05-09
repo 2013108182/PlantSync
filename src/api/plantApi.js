@@ -71,6 +71,36 @@ async function translateToKorean(text) {
   }
 }
 
+// 한국어(또는 임의 언어) → 영어 번역
+async function translateToEnglish(text) {
+  if (!text) return text
+  try {
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=ko|en`
+    const res  = await fetch(url)
+    const data = await res.json()
+    const translated = data?.responseData?.translatedText
+    if (!translated || translated.toLowerCase() === text.toLowerCase()) return text
+    return translated
+  } catch {
+    return text
+  }
+}
+
+// 한국어 식물 이름 → 영어 번역 → Perenual 급수 주기 조회
+// 직접 입력 폼에서 사용
+export async function searchWateringCycleByName(koreanOrAnyName) {
+  // 1. 한국어 → 영어로 번역
+  const englishName = await translateToEnglish(koreanOrAnyName)
+
+  // 2. 영어 이름으로 Perenual 검색
+  const result = await getWateringCycle(englishName)
+
+  return {
+    ...result,
+    translatedName: englishName,   // 어떤 영어 이름으로 검색했는지 UI에 표시용
+  }
+}
+
 // Perenual API - 급수 주기 조회 (검색은 영문 학명으로)
 export async function getWateringCycle(plantNameEn) {
   const apiKey = import.meta.env.VITE_PERENUAL_API_KEY
