@@ -16,9 +16,11 @@ export default function AddPlantModal({ onClose, onSave }) {
   const [imagePreview, setImagePreview] = useState(null)
   const [suggestions, setSuggestions]   = useState([])
   const [showAllSug, setShowAllSug]     = useState(false)
-  const [cycleHint, setCycleHint]       = useState('')   // 보정 근거 표시
-  const [careNote, setCareNote]         = useState('')   // 관리 팁
-  const [form, setForm]                 = useState({
+  const [cycleHint, setCycleHint]               = useState('')   // 보정 근거 표시
+  const [careNote, setCareNote]                 = useState('')   // 관리 팁
+  const [wateringMethod, setWateringMethod]     = useState('')   // 물 주는 방식
+  const [wateringMethodNote, setWateringMethodNote] = useState('')
+  const [form, setForm]                         = useState({
     nickname:      '',
     species:       '',
     wateringCycle: 7,
@@ -45,6 +47,8 @@ export default function AddPlantModal({ onClose, onSave }) {
       setSuggestions(result.suggestions || [])
       setCycleHint(result.cycleBasis || '')
       setCareNote(result.careNote || '')
+      setWateringMethod(result.wateringMethod || '')
+      setWateringMethodNote(result.wateringMethodNote || '')
       setForm(f => ({
         ...f,
         nickname:      result.koreanName,
@@ -71,11 +75,13 @@ export default function AddPlantModal({ onClose, onSave }) {
     setStep(STEPS.SAVING)
     try {
       await onSave({
-        nickname:      form.nickname.trim(),
-        species:       form.species.trim(),
+        nickname:           form.nickname.trim(),
+        species:            form.species.trim(),
         imageFile,
-        wateringCycle: Math.max(1, Number(form.wateringCycle) || 7),
-        lastWateredAt: form.lastWateredAt || null,
+        wateringCycle:      Math.max(1, Number(form.wateringCycle) || 7),
+        lastWateredAt:      form.lastWateredAt || null,
+        wateringMethod:     wateringMethod || '',
+        wateringMethodNote: wateringMethodNote || '',
       })
       onClose()
     } catch (e) {
@@ -178,11 +184,29 @@ export default function AddPlantModal({ onClose, onSave }) {
                 </div>
               )}
 
-              {/* AI 관리 팁 */}
-              {careNote && (
-                <div className="bg-[#1A3528]/8 border border-[#1A3528]/20 rounded-2xl px-4 py-3">
-                  <p className="text-[11px] font-bold text-[#1A3528] uppercase tracking-wider mb-1">🌿 관리 팁</p>
-                  <p className="text-xs text-[#2D5A3D]">{careNote}</p>
+              {/* AI 관리 팁 + 물 주는 법 */}
+              {(careNote || wateringMethod) && (
+                <div className="bg-[#1A3528]/8 border border-[#1A3528]/20 rounded-2xl px-4 py-3 space-y-2">
+                  {wateringMethod && (
+                    <div className="flex items-start gap-2">
+                      <span className="text-[11px] font-bold text-[#1A3528] uppercase tracking-wider whitespace-nowrap">💧 물 주는 법</span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full"
+                              style={{ background: '#1A3528', color: '#86EFAC' }}>
+                          {wateringMethod}
+                        </span>
+                        {wateringMethodNote && (
+                          <span className="text-[11px] text-[#2D5A3D]">{wateringMethodNote}</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {careNote && (
+                    <div>
+                      <p className="text-[11px] font-bold text-[#1A3528] uppercase tracking-wider mb-1">🌿 관리 팁</p>
+                      <p className="text-xs text-[#2D5A3D]">{careNote}</p>
+                    </div>
+                  )}
                 </div>
               )}
 

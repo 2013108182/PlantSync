@@ -22,7 +22,7 @@ function getGreeting() {
 }
 
 export default function App() {
-  const { plants, loading, error, addPlant, waterPlant, updatePlant, deletePlant } = usePlants()
+  const { plants, loading, error, addPlant, waterPlant, undoWater, updatePlant, deletePlant } = usePlants()
   const { currentUserName, isReadOnly } = useUser()
 
   const [showAdd, setShowAdd]           = useState(false)
@@ -46,11 +46,40 @@ export default function App() {
 
   const handleWater = async (id, name) => {
     if (isReadOnly) return
+    // 실행취소를 위해 물 주기 전 상태 스냅샷
+    const plant = plants.find(p => p.id === id)
+    const prevLastWateredAt = plant?.lastWateredAt ?? null
+    const prevLastWateredBy = plant?.lastWateredBy ?? null
+
     try {
       await waterPlant(id, name)
-      toast.success(`💧 ${name}이(가) 물을 줬어요!`, {
-        style: { borderRadius: '14px', fontWeight: 600, fontSize: '14px' },
-      })
+      // 실행취소 버튼이 담긴 토스트 (5초 유지)
+      toast(
+        (t) => (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>💧 {name}이(가) 물을 줬어요!</span>
+            <button
+              onClick={async () => {
+                toast.dismiss(t.id)
+                try {
+                  await undoWater(id, prevLastWateredAt, prevLastWateredBy)
+                  toast.success('↩️ 실행 취소됐어요', {
+                    style: { borderRadius: '14px', fontWeight: 600, fontSize: '14px' },
+                  })
+                } catch (e) { toast.error('실행 취소 실패: ' + e.message) }
+              }}
+              style={{
+                fontSize: 12, fontWeight: 700, color: '#1A3528',
+                background: 'rgba(26,53,40,0.12)', border: 'none',
+                borderRadius: 8, padding: '4px 10px', cursor: 'pointer', flexShrink: 0,
+              }}
+            >
+              실행취소
+            </button>
+          </div>
+        ),
+        { duration: 5000, style: { borderRadius: '14px', padding: '10px 14px' } }
+      )
     } catch (e) { toast.error('오류: ' + e.message) }
   }
 

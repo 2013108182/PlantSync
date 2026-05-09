@@ -73,7 +73,7 @@ export function usePlants() {
   }, [])
 
   // 식물 추가
-  const addPlant = async ({ nickname, species, imageFile, wateringCycle, lastWateredAt }) => {
+  const addPlant = async ({ nickname, species, imageFile, wateringCycle, lastWateredAt, wateringMethod, wateringMethodNote }) => {
     let imageUrl = ''
     if (imageFile) {
       imageUrl = await uploadToImgBB(imageFile)
@@ -84,10 +84,12 @@ export function usePlants() {
       nickname,
       species,
       imageUrl,
-      wateringCycle: Number(wateringCycle) || 7,
-      lastWateredAt: wateredTimestamp,
-      lastWateredBy: null,
-      createdAt: serverTimestamp(),
+      wateringCycle:      Number(wateringCycle) || 7,
+      lastWateredAt:      wateredTimestamp,
+      lastWateredBy:      null,
+      wateringMethod:     wateringMethod     || '',
+      wateringMethodNote: wateringMethodNote || '',
+      createdAt:          serverTimestamp(),
     })
   }
 
@@ -97,6 +99,15 @@ export function usePlants() {
     await updateDoc(plantRef, {
       lastWateredAt: serverTimestamp(),
       lastWateredBy: userName,
+    })
+  }
+
+  // 급수 실행취소 — 이전 lastWateredAt / lastWateredBy 복원
+  const undoWater = async (plantId, prevLastWateredAt, prevLastWateredBy) => {
+    const plantRef = doc(db, 'plants', plantId)
+    await updateDoc(plantRef, {
+      lastWateredAt: prevLastWateredAt ?? null,
+      lastWateredBy: prevLastWateredBy ?? null,
     })
   }
 
@@ -111,5 +122,5 @@ export function usePlants() {
     await deleteDoc(doc(db, 'plants', plant.id))
   }
 
-  return { plants, loading, error, addPlant, waterPlant, updatePlant, deletePlant }
+  return { plants, loading, error, addPlant, waterPlant, undoWater, updatePlant, deletePlant }
 }

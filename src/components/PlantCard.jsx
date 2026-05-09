@@ -2,13 +2,25 @@ import { useState, useRef } from 'react'
 import { Droplets, Trash2, Edit3, Lock } from 'lucide-react'
 import { getDDay } from '../hooks/usePlants'
 
-function urgencyStyle(dday) {
+// 노란색 임계값을 주기 대비 상대적으로 계산
+// - 2~3일 주기 식물: 1일 이하만 노란색 (바로 물 준 뒤엔 초록)
+// - 7일 주기: 3일 이하 노란색 (기존과 동일)
+// - 14일+ 주기: 최대 3일로 고정
+function yellowThreshold(wateringCycle = 7) {
+  return Math.max(1, Math.min(3, Math.round(wateringCycle * 0.4)))
+}
+
+function urgencyStyle(dday, wateringCycle = 7) {
   if (dday === null) return { bar: '#D1D5DB', badge: '#F9FAFB', badgeText: '#6B7280', dayText: '#9CA3AF', label: '기록 없음' }
   if (dday < 0)     return { bar: '#EF4444', badge: '#FEE2E2', badgeText: '#B91C1C', dayText: '#EF4444', label: `+${Math.abs(dday)}일 지남` }
   if (dday === 0)   return { bar: '#F97316', badge: '#FFEDD5', badgeText: '#C2410C', dayText: '#F97316', label: '오늘!' }
-  if (dday <= 3)    return { bar: '#EAB308', badge: '#FEF9C3', badgeText: '#A16207', dayText: '#CA8A04', label: '곧 줘야해요' }
+  if (dday <= yellowThreshold(wateringCycle))
+                    return { bar: '#EAB308', badge: '#FEF9C3', badgeText: '#A16207', dayText: '#CA8A04', label: '곧 줘야해요' }
   return                   { bar: '#22C55E', badge: '#DCFCE7', badgeText: '#15803D', dayText: '#16A34A', label: '상태 양호' }
 }
+
+// 물 주는 방식 → 아이콘 매핑
+const METHOD_ICON = { '듬뿍': '🚿', '겉흙만': '💧', '스프레이': '🌫️', '소량자주': '🫧' }
 
 function timeAgo(ts) {
   if (!ts) return null
@@ -25,7 +37,7 @@ export default function PlantCard({ plant, currentUserName, isReadOnly, onWater,
   const wateringRef               = useRef(false)      // P1: 중복 탭 방지용 ref
 
   const dday  = getDDay(plant)
-  const style = urgencyStyle(dday)
+  const style = urgencyStyle(dday, plant.wateringCycle)
   const ddayLabel = dday === null ? '—' : dday < 0 ? `D+${Math.abs(dday)}` : dday === 0 ? 'D-Day' : `D-${dday}`
 
   // P1-2: ref 기반 중복 요청 방지 (setState 지연과 무관하게 즉시 잠금)
@@ -87,7 +99,18 @@ export default function PlantCard({ plant, currentUserName, isReadOnly, onWater,
             {/* 메타 */}
             <div className="mt-2.5 flex items-center justify-between">
               <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] text-[#9CA3AF]">💧 {plant.wateringCycle}일마다</span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[11px] text-[#9CA3AF]">💧 {plant.wateringCycle}일마다</span>
+                  {plant.wateringMethod && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                          style={{ background: style.badge, color: style.badgeText }}>
+                      {METHOD_ICON[plant.wateringMethod] || '💧'} {plant.wateringMethod}
+                    </span>
+                  )}
+                </div>
+                {plant.wateringMethodNote && (
+                  <span className="text-[10px] text-[#9CA3AF] italic leading-snug">{plant.wateringMethodNote}</span>
+                )}
                 {plant.lastWateredAt ? (
                   <span className="text-[11px] text-[#6B7280]">
                     <span className="font-semibold text-[#4B5563]">{plant.lastWateredBy}</span>
@@ -96,7 +119,7 @@ export default function PlantCard({ plant, currentUserName, isReadOnly, onWater,
                 ) : (
                   <span className="text-[11px] text-[#D1D5DB] italic">💡 아직 물 준 기록이 없어요</span>
                 )}
-              </div>
+              </div>  {/* flex flex-col gap-0.5 */}
 
               {!isReadOnly && (
                 <div className="flex gap-1">

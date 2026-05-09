@@ -55,8 +55,14 @@ export async function identifyAndGetCycle(imageFile) {
    - 여름(6~8월): 기본 주기 × 0.8 반올림
    - 겨울(12~2월): 기본 주기 × 1.5 반올림
    - 봄/가을: 기본 주기 × 1.0
-3. 모든 이름과 설명은 한국어로 작성해주세요.
-4. 아래 JSON 형식으로만 응답하세요. 코드블록이나 추가 설명 없이 순수 JSON만 반환하세요.
+3. 이 식물에 가장 알맞은 물 주는 방식을 아래 4가지 중 정확히 하나만 골라 wateringMethod에 넣어주세요.
+   - "듬뿍" : 화분 밑으로 물이 빠질 때까지 충분히 준다 (배수 좋은 식물)
+   - "겉흙만" : 겉흙이 살짝 촉촉해질 정도만 준다 (과습에 약한 식물)
+   - "스프레이" : 분무기로 잎과 표면에 뿌린다 (착생란·이끼류 등)
+   - "소량자주" : 적은 양을 조금씩 자주 준다 (건조에 민감한 식물)
+   wateringMethodNote에는 이 식물에 대한 물 주기 방식 이유를 한 줄로 설명해주세요.
+4. 모든 이름과 설명은 한국어로 작성해주세요.
+5. 아래 JSON 형식으로만 응답하세요. 코드블록이나 추가 설명 없이 순수 JSON만 반환하세요.
 
 {
   "best": {
@@ -64,7 +70,9 @@ export async function identifyAndGetCycle(imageFile) {
     "scientificName": "학명",
     "wateringCycle": 7,
     "cycleBasis": "기본 7일 기준, 계절 보정 없음 (봄/가을)",
-    "careNote": "거실 창가 관리 핵심 팁 한 줄"
+    "careNote": "거실 창가 관리 핵심 팁 한 줄",
+    "wateringMethod": "듬뿍",
+    "wateringMethodNote": "이 식물에 물 주는 방식 이유 한 줄"
   },
   "suggestions": [
     { "name": "한국어 이름", "scientific": "학명", "probability": 0.92 },
@@ -92,11 +100,13 @@ export async function identifyAndGetCycle(imageFile) {
 
   const best = parsed.best || {}
   return {
-    koreanName:     best.koreanName     || '알 수 없는 식물',
-    scientificName: best.scientificName || '',
-    wateringCycle:  Math.max(1, Math.round(Number(best.wateringCycle) || 7)),
-    cycleBasis:     best.cycleBasis     || '',
-    careNote:       best.careNote       || '',
+    koreanName:          best.koreanName          || '알 수 없는 식물',
+    scientificName:      best.scientificName      || '',
+    wateringCycle:       Math.max(1, Math.round(Number(best.wateringCycle) || 7)),
+    cycleBasis:          best.cycleBasis          || '',
+    careNote:            best.careNote            || '',
+    wateringMethod:      best.wateringMethod      || '',
+    wateringMethodNote:  best.wateringMethodNote  || '',
     suggestions: (parsed.suggestions || []).map(s => ({
       name:        s.name        || '',
       scientific:  s.scientific  || '',
