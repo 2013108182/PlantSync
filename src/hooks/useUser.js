@@ -39,7 +39,11 @@ export function useUser() {
   const [user, setUser] = useState({ currentUserName: null, isReadOnly: null })
 
   useEffect(() => {
-    detectUser().then(setUser)
+    let mounted = true
+    detectUser().then(result => {
+      if (mounted) setUser(result)  // 언마운트 후 setState 방지
+    })
+    return () => { mounted = false }
   }, [])
 
   return user

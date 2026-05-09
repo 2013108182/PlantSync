@@ -15,19 +15,26 @@ import { uploadToImgBB } from '../api/imageApi'
 
 // 다음 급수일 계산 (lastWateredAt + wateringCycle)
 export const getNextWateringDate = (plant) => {
-  if (!plant.lastWateredAt) return new Date(0) // 한 번도 안 준 경우 → 가장 급함
+  if (!plant.lastWateredAt) return null  // 기록 없음은 null로 구분
   const last = plant.lastWateredAt.toDate ? plant.lastWateredAt.toDate() : new Date(plant.lastWateredAt)
   const next = new Date(last)
   next.setDate(next.getDate() + (plant.wateringCycle || 7))
   return next
 }
 
-// D-Day 계산 (음수면 overdue)
+// D-Day 계산 (음수면 overdue, null이면 기록없음)
 export const getDDay = (plant) => {
   const next = getNextWateringDate(plant)
+  if (!next) return null   // 한 번도 물 안 줬음 → null
   const now  = new Date()
-  const diff = Math.ceil((next - now) / (1000 * 60 * 60 * 24))
-  return diff
+  return Math.ceil((next - now) / (1000 * 60 * 60 * 24))
+}
+
+// 정렬용 D-Day (null은 맨 뒤에, 연체 → 오늘 → 여유 순)
+export const getSortKey = (plant) => {
+  const dday = getDDay(plant)
+  if (dday === null) return 99999   // 기록없음 → 맨 뒤
+  return dday
 }
 
 export function usePlants() {
@@ -41,8 +48,8 @@ export function usePlants() {
       q,
       (snapshot) => {
         const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
-        // D-Day 기준 오름차순 정렬 (급한 순)
-        data.sort((a, b) => getDDay(a) - getDDay(b))
+        // 정렬: 연체 → 오늘 → 여유 순, 기록없음(null)은 맨 뒤
+        data.sort((a, b) => getSortKey(a) - getSortKey(b))
         setPlants(data)
         setLoading(false)
       },

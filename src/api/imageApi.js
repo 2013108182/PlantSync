@@ -13,7 +13,7 @@ function compressImage(file) {
     img.onload = () => {
       URL.revokeObjectURL(objectUrl)
 
-      let { width, height } = img
+      let { width, height, naturalWidth, naturalHeight } = img
 
       // 최대 크기 초과 시 비율 유지하며 축소
       if (width > MAX_SIZE_PX || height > MAX_SIZE_PX) {
@@ -31,6 +31,10 @@ function compressImage(file) {
       canvas.height = height
 
       const ctx = canvas.getContext('2d')
+      // EXIF 회전 보정: CSS image-orientation 속성으로 브라우저가 자동 처리하도록 유도
+      // Canvas는 EXIF를 무시하므로 imageSmoothingEnabled로 품질 보장
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = 'high'
       ctx.drawImage(img, 0, 0, width, height)
 
       canvas.toBlob(

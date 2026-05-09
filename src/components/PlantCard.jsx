@@ -1,12 +1,13 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Droplets, Trash2, Edit3, Lock } from 'lucide-react'
 import { getDDay } from '../hooks/usePlants'
 
 function urgencyStyle(dday) {
-  if (dday < 0)   return { bar: '#EF4444', badge: '#FEE2E2', badgeText: '#B91C1C', dayText: '#EF4444', label: `+${Math.abs(dday)}일 지남` }
-  if (dday === 0) return { bar: '#F97316', badge: '#FFEDD5', badgeText: '#C2410C', dayText: '#F97316', label: '오늘!' }
-  if (dday <= 3)  return { bar: '#EAB308', badge: '#FEF9C3', badgeText: '#A16207', dayText: '#CA8A04', label: '곧 줘야해요' }
-  return                 { bar: '#22C55E', badge: '#DCFCE7', badgeText: '#15803D', dayText: '#16A34A', label: '상태 양호' }
+  if (dday === null) return { bar: '#D1D5DB', badge: '#F9FAFB', badgeText: '#6B7280', dayText: '#9CA3AF', label: '기록 없음' }
+  if (dday < 0)     return { bar: '#EF4444', badge: '#FEE2E2', badgeText: '#B91C1C', dayText: '#EF4444', label: `+${Math.abs(dday)}일 지남` }
+  if (dday === 0)   return { bar: '#F97316', badge: '#FFEDD5', badgeText: '#C2410C', dayText: '#F97316', label: '오늘!' }
+  if (dday <= 3)    return { bar: '#EAB308', badge: '#FEF9C3', badgeText: '#A16207', dayText: '#CA8A04', label: '곧 줘야해요' }
+  return                   { bar: '#22C55E', badge: '#DCFCE7', badgeText: '#15803D', dayText: '#16A34A', label: '상태 양호' }
 }
 
 function timeAgo(ts) {
@@ -19,15 +20,24 @@ function timeAgo(ts) {
 }
 
 export default function PlantCard({ plant, currentUserName, isReadOnly, onWater, onDelete, onEdit }) {
-  const [watering, setWatering] = useState(false)
+  const [watering, setWatering]   = useState(false)
+  const [imgError, setImgError]   = useState(false)   // P2: broken image 처리
+  const wateringRef               = useRef(false)      // P1: 중복 탭 방지용 ref
+
   const dday  = getDDay(plant)
   const style = urgencyStyle(dday)
-  const ddayLabel = dday < 0 ? `D+${Math.abs(dday)}` : dday === 0 ? 'D-Day' : `D-${dday}`
+  const ddayLabel = dday === null ? '—' : dday < 0 ? `D+${Math.abs(dday)}` : dday === 0 ? 'D-Day' : `D-${dday}`
 
+  // P1-2: ref 기반 중복 요청 방지 (setState 지연과 무관하게 즉시 잠금)
   const handleWater = async () => {
+    if (wateringRef.current) return
+    wateringRef.current = true
     setWatering(true)
     try { await onWater(plant.id, currentUserName) }
-    finally { setWatering(false) }
+    finally {
+      wateringRef.current = false
+      setWatering(false)
+    }
   }
 
   return (
@@ -35,11 +45,12 @@ export default function PlantCard({ plant, currentUserName, isReadOnly, onWater,
          style={{ borderLeft: `4px solid ${style.bar}` }}>
       <div className="p-4">
         <div className="flex gap-3">
-          {/* 식물 이미지 */}
+          {/* 식물 이미지 — P2: imgError 시 이모지 폴백 */}
           <div className="flex-shrink-0">
-            {plant.imageUrl ? (
+            {plant.imageUrl && !imgError ? (
               <img src={plant.imageUrl} alt={plant.nickname}
-                   className="w-[68px] h-[68px] rounded-xl object-cover" />
+                   className="w-[68px] h-[68px] rounded-xl object-cover"
+                   onError={() => setImgError(true)} />
             ) : (
               <div className="w-[68px] h-[68px] rounded-xl flex items-center justify-center text-3xl"
                    style={{ background: style.badge }}>
@@ -83,11 +94,10 @@ export default function PlantCard({ plant, currentUserName, isReadOnly, onWater,
                     {'가 '}{timeAgo(plant.lastWateredAt)} 물 줌
                   </span>
                 ) : (
-                  <span className="text-[11px] text-[#D1D5DB] italic">물 준 기록 없음</span>
+                  <span className="text-[11px] text-[#D1D5DB] italic">💡 아직 물 준 기록이 없어요</span>
                 )}
               </div>
 
-              {/* 수정/삭제 — 읽기 전용이면 숨김 */}
               {!isReadOnly && (
                 <div className="flex gap-1">
                   <button onClick={() => onEdit(plant)}
@@ -105,12 +115,11 @@ export default function PlantCard({ plant, currentUserName, isReadOnly, onWater,
         </div>
       </div>
 
-      {/* 물주기 버튼 — 읽기 전용이면 잠금 표시 */}
+      {/* 물주기 버튼 */}
       {isReadOnly ? (
         <div className="w-full py-3 flex items-center justify-center gap-2 text-[13px] font-semibold text-[#C4C4C4]"
              style={{ background: '#F9F9F9' }}>
-          <Lock size={13} />
-          읽기 전용
+          <Lock size={13} /> 읽기 전용
         </div>
       ) : (
         <button onClick={handleWater} disabled={watering}

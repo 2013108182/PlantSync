@@ -3,11 +3,18 @@ import { Trash2 } from 'lucide-react'
 
 export default function DeleteConfirmModal({ plant, onClose, onConfirm }) {
   const [deleting, setDeleting] = useState(false)
+  const [error, setError]       = useState('')
 
   const handleConfirm = async () => {
     setDeleting(true)
-    await onConfirm(plant)
-    onClose()
+    setError('')
+    try {
+      await onConfirm(plant)
+      onClose()   // 성공 시에만 닫힘
+    } catch (e) {
+      setError('삭제 실패: ' + e.message)
+      setDeleting(false)
+    }
   }
 
   return (
@@ -30,6 +37,11 @@ export default function DeleteConfirmModal({ plant, onClose, onConfirm }) {
             </div>
           </div>
 
+          {error && (
+            <div className="bg-red-50 border border-red-100 rounded-xl px-3 py-2 w-full text-center">
+              <p className="text-red-500 text-xs font-medium">{error}</p>
+            </div>
+          )}
           <div className="flex gap-2">
             <button onClick={onClose}
                     className="flex-1 py-4 bg-white text-[#4B5563] font-bold rounded-2xl text-sm card-shadow active:scale-95 transition-transform">
