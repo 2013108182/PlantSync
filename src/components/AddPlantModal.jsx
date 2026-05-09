@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
-import { X, Camera, Loader, Sparkles, ChevronDown, ChevronUp, Check, Search } from 'lucide-react'
-import { identifyPlant, getWateringCycle } from '../api/plantApi'
+import { X, Camera, Loader, Sparkles, ChevronDown, ChevronUp, Check } from 'lucide-react'
+import { identifyAndGetCycle } from '../api/plantApi'
 
 const STEPS = { UPLOAD: 'upload', IDENTIFYING: 'identifying', CONFIRM: 'confirm', SAVING: 'saving' }
 
@@ -11,22 +11,21 @@ function todayString() {
 }
 
 export default function AddPlantModal({ onClose, onSave }) {
-  const [step, setStep]                   = useState(STEPS.UPLOAD)
-  const [imageFile, setImageFile]         = useState(null)
-  const [imagePreview, setImagePreview]   = useState(null)
-  const [suggestions, setSuggestions]     = useState([])
-  const [showAllSug, setShowAllSug]       = useState(false)
-  const [form, setForm]                   = useState({
+  const [step, setStep]                 = useState(STEPS.UPLOAD)
+  const [imageFile, setImageFile]       = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
+  const [suggestions, setSuggestions]   = useState([])
+  const [showAllSug, setShowAllSug]     = useState(false)
+  const [cycleHint, setCycleHint]       = useState('')   // 보정 근거 표시
+  const [careNote, setCareNote]         = useState('')   // 관리 팁
+  const [form, setForm]                 = useState({
     nickname:      '',
     species:       '',
     wateringCycle: 7,
-    lastWateredAt: todayString(),   // ① 기본값: 오늘
+    lastWateredAt: todayString(),   // 기본값: 오늘
   })
-  const [cycleSearchInput, setCycleSearchInput] = useState('')   // ② 학명 직접 검색 input
-  const [cycleSearching, setCycleSearching]     = useState(false)
-  const [cycleHint, setCycleHint]               = useState('')
-  const [error, setError]                       = useState('')
-  const fileInputRef                            = useRef()
+  const [error, setError] = useState('')
+  const fileInputRef      = useRef()
 
   const handleImageSelect = (e) => {
     const file = e.target.files?.[0]
@@ -36,65 +35,35 @@ export default function AddPlantModal({ onClose, onSave }) {
     setError('')
   }
 
-  // Plant.id AI 인식
+  // Gemini AI 인식
   const handleIdentify = async () => {
     if (!imageFile) { setError('사진을 먼저 선택해주세요.'); return }
     setStep(STEPS.IDENTIFYING)
     setError('')
     try {
-      const result = await identifyPlant(imageFile)
-      setSuggestions(result.allSuggestions || [])
-      let cycle = 7
-      try {
-        const w = await getWateringCycle(result.scientificName)
-        if (w?.cycle) {
-          cycle = w.cycle
-          setCycleHint(`${w.matchedName} 기준 · ${w.cycleLabel}`)
-        }
-      } catch {}
-      setCycleSearchInput(result.scientificName || '')
-      setForm(f => ({ ...f, nickname: result.commonName, species: result.scientificName, wateringCycle: cycle }))
+      const result = await identifyAndGetCycle(imageFile)
+      setSuggestions(result.suggestions || [])
+      setCycleHint(result.cycleBasis || '')
+      setCareNote(result.careNote || '')
+      setForm(f => ({
+        ...f,
+        nickname:      result.koreanName,
+        species:       result.scientificName,
+        wateringCycle: result.wateringCycle,
+      }))
       setStep(STEPS.CONFIRM)
     } catch (e) {
-      setError(e.message || '식물 인식 실패. API 키를 확인해주세요.')
+      setError(e.message || '식물 인식 실패. 다시 시도해주세요.')
       setStep(STEPS.UPLOAD)
     }
   }
 
-  // AI 후보 선택
-  const selectSuggestion = async (s) => {
+  // AI 후보 선택 시 해당 식물로 폼 업데이트
+  const selectSuggestion = (s) => {
     setForm(f => ({ ...f, nickname: s.name, species: s.scientific }))
-    setCycleSearchInput(s.scientific || s.name)
-    setCycleHint('')
-    try {
-      const w = await getWateringCycle(s.scientific || s.name)
-      if (w?.cycle) {
-        setForm(f => ({ ...f, wateringCycle: w.cycle }))
-        setCycleHint(`${w.matchedName} 기준 · ${w.cycleLabel}`)
-      }
-    } catch {}
-  }
-
-  // ② 학명/영문명 직접 검색
-  const handleCycleSearch = async () => {
-    const query = cycleSearchInput.trim()
-    if (!query) { setError('학명 또는 영문 이름을 입력해주세요. (예: Monstera deliciosa)'); return }
-    setCycleSearching(true)
-    setCycleHint('')
-    setError('')
-    try {
-      const result = await getWateringCycle(query)
-      if (result?.cycle) {
-        setForm(f => ({ ...f, wateringCycle: result.cycle }))
-        setCycleHint(`"${result.matchedName}" 기준 · ${result.cycleLabel}`)
-      } else {
-        setError(`"${query}"에 해당하는 식물을 찾지 못했어요. 학명을 다시 확인해주세요.`)
-      }
-    } catch (e) {
-      setError('검색 실패: ' + e.message)
-    } finally {
-      setCycleSearching(false)
-    }
+    // 후보 선택 시엔 기존 주기 그대로 유지 (Gemini가 1순위 기준으로 이미 계산)
+    setCycleHint('선택한 식물 기준으로 수동 조정 가능해요')
+    setCareNote('')
   }
 
   const handleSave = async () => {
@@ -105,8 +74,8 @@ export default function AddPlantModal({ onClose, onSave }) {
         nickname:      form.nickname.trim(),
         species:       form.species.trim(),
         imageFile,
-        wateringCycle: Number(form.wateringCycle) || 7,
-        lastWateredAt: form.lastWateredAt || null,   // ① 날짜 전달
+        wateringCycle: Math.max(1, Number(form.wateringCycle) || 7),
+        lastWateredAt: form.lastWateredAt || null,
       })
       onClose()
     } catch (e) {
@@ -128,7 +97,7 @@ export default function AddPlantModal({ onClose, onSave }) {
             <h2 className="text-[17px] font-extrabold text-[#1A1A1A]">새 식물 등록</h2>
             <p className="text-[11px] text-[#9CA3AF] mt-0.5">
               {step === STEPS.UPLOAD || step === STEPS.IDENTIFYING
-                ? 'AI가 식물을 인식해드려요'
+                ? 'AI가 식물과 계절을 분석해드려요'
                 : '정보를 확인하고 수정해주세요'}
             </p>
           </div>
@@ -153,13 +122,23 @@ export default function AddPlantModal({ onClose, onSave }) {
                     <div className="w-16 h-16 rounded-2xl bg-[#F2F1EC] flex items-center justify-center text-3xl">📷</div>
                     <div className="text-center">
                       <p className="text-sm font-bold text-[#1A1A1A]">사진 선택 / 촬영</p>
-                      <p className="text-xs text-[#9CA3AF] mt-0.5">AI가 식물 이름을 찾아드려요</p>
+                      <p className="text-xs text-[#9CA3AF] mt-0.5">AI가 식물 이름과 급수 주기를 분석해요</p>
                     </div>
                   </div>
                 )}
                 <input ref={fileInputRef} type="file" accept="image/*" capture="environment"
                        className="hidden" onChange={handleImageSelect} />
               </div>
+
+              {/* 분석 중 메시지 */}
+              {step === STEPS.IDENTIFYING && (
+                <div className="bg-[#1A3528]/10 rounded-2xl px-4 py-3 flex items-center gap-3">
+                  <Loader size={16} className="animate-spin text-[#1A3528] flex-shrink-0" />
+                  <p className="text-sm font-semibold text-[#1A3528]">
+                    거실 창가 환경과 계절을 분석 중...
+                  </p>
+                </div>
+              )}
 
               {error && (
                 <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3">
@@ -172,8 +151,8 @@ export default function AddPlantModal({ onClose, onSave }) {
                         disabled={!imageFile || step === STEPS.IDENTIFYING}
                         className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-[#1A3528] text-white font-bold rounded-2xl text-sm disabled:opacity-50 active:scale-95 transition-transform">
                   {step === STEPS.IDENTIFYING
-                    ? <><Loader size={15} className="animate-spin" /> AI 인식 중...</>
-                    : <><Sparkles size={15} /> 식물 자동 인식</>}
+                    ? <><Loader size={15} className="animate-spin" /> 분석 중...</>
+                    : <><Sparkles size={15} /> AI 식물 분석</>}
                 </button>
                 <button onClick={() => setStep(STEPS.CONFIRM)}
                         className="px-4 py-3.5 bg-white text-[#4B5563] font-semibold rounded-2xl text-sm card-shadow active:scale-95 transition-transform">
@@ -199,7 +178,15 @@ export default function AddPlantModal({ onClose, onSave }) {
                 </div>
               )}
 
-              {/* AI 후보 */}
+              {/* AI 관리 팁 */}
+              {careNote && (
+                <div className="bg-[#1A3528]/8 border border-[#1A3528]/20 rounded-2xl px-4 py-3">
+                  <p className="text-[11px] font-bold text-[#1A3528] uppercase tracking-wider mb-1">🌿 관리 팁</p>
+                  <p className="text-xs text-[#2D5A3D]">{careNote}</p>
+                </div>
+              )}
+
+              {/* AI 후보 목록 */}
               {suggestions.length > 1 && (
                 <div className="bg-white rounded-2xl p-4 card-shadow space-y-2">
                   <p className="text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">AI 인식 결과</p>
@@ -248,7 +235,18 @@ export default function AddPlantModal({ onClose, onSave }) {
                          className="w-full px-4 py-3 bg-[#F2F1EC] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1A3528]" />
                 </div>
 
-                {/* ① 마지막 물 준 날 */}
+                {/* 학명 (선택) */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5">
+                    학명 (선택)
+                  </label>
+                  <input type="text" value={form.species}
+                         onChange={e => setForm(f => ({ ...f, species: e.target.value }))}
+                         placeholder="예: Monstera deliciosa"
+                         className="w-full px-4 py-3 bg-[#F2F1EC] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1A3528] placeholder:text-[#C4C4C4]" />
+                </div>
+
+                {/* 마지막 물 준 날 */}
                 <div>
                   <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5">
                     마지막으로 물 준 날
@@ -260,27 +258,13 @@ export default function AddPlantModal({ onClose, onSave }) {
                   <p className="text-[11px] text-[#9CA3AF] mt-1">기본값은 오늘이에요</p>
                 </div>
 
-                {/* ② 급수 주기 + 학명 직접 검색 */}
+                {/* 급수 주기 */}
                 <div>
                   <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-2">
                     급수 주기
                   </label>
 
-                  {/* 학명 검색 row */}
-                  <div className="flex gap-2 mb-2">
-                    <input type="text" value={cycleSearchInput}
-                           onChange={e => setCycleSearchInput(e.target.value)}
-                           onKeyDown={e => e.key === 'Enter' && handleCycleSearch()}
-                           placeholder="학명 또는 영문 이름 (예: Monstera)"
-                           className="flex-1 px-3 py-2 bg-[#F2F1EC] rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#1A3528] placeholder:text-[#C4C4C4]" />
-                    <button onClick={handleCycleSearch} disabled={cycleSearching}
-                            className="flex items-center gap-1 px-3 py-2 bg-[#1A3528] text-white font-bold rounded-xl text-xs disabled:opacity-50 active:scale-95 transition-transform flex-shrink-0">
-                      {cycleSearching ? <Loader size={12} className="animate-spin" /> : <Search size={12} />}
-                      {cycleSearching ? '검색 중' : '검색'}
-                    </button>
-                  </div>
-
-                  {/* 검색 결과 힌트 */}
+                  {/* 계절 보정 힌트 */}
                   {cycleHint && (
                     <p className="text-[11px] text-[#16A34A] font-semibold mb-2">✓ {cycleHint}</p>
                   )}

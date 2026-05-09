@@ -13,12 +13,22 @@ import {
 import { db } from '../firebase'
 import { uploadToImgBB } from '../api/imageApi'
 
-// 다음 급수일 계산 (lastWateredAt + wateringCycle)
+// 계절 보정 multiplier (한국 계절 기준)
+// 여름(6~8월): 0.8배 — 증발 빠름, 겨울(12~2월): 1.5배 — 휴면기 과습 주의
+export const getSeasonalMultiplier = () => {
+  const month = new Date().getMonth() + 1  // 1~12
+  if (month >= 6 && month <= 8)  return 0.8
+  if (month >= 12 || month <= 2) return 1.5
+  return 1.0
+}
+
+// 다음 급수일 계산 (lastWateredAt + wateringCycle × 계절 보정)
 export const getNextWateringDate = (plant) => {
   if (!plant.lastWateredAt) return null  // 기록 없음은 null로 구분
   const last = plant.lastWateredAt.toDate ? plant.lastWateredAt.toDate() : new Date(plant.lastWateredAt)
   const next = new Date(last)
-  next.setDate(next.getDate() + (plant.wateringCycle || 7))
+  const adjustedCycle = Math.max(1, Math.round((plant.wateringCycle || 7) * getSeasonalMultiplier()))
+  next.setDate(next.getDate() + adjustedCycle)
   return next
 }
 
