@@ -12,7 +12,7 @@ export async function getWateringMethodByName(nickname, species = '') {
   if (!apiKey) throw new Error('Gemini API 키가 설정되지 않았습니다.')
 
   const genAI = new GoogleGenerativeAI(apiKey)
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' })
 
   const plantDesc = species ? nickname + ' (' + species + ')' : nickname
 
@@ -75,7 +75,7 @@ export async function identifyAndGetCycle(imageFile) {
   if (!apiKey) throw new Error('Gemini API 키가 설정되지 않았습니다.')
 
   const genAI = new GoogleGenerativeAI(apiKey)
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' })
 
   const base64    = await fileToBase64(imageFile)
   const mimeType  = imageFile.type || 'image/jpeg'
