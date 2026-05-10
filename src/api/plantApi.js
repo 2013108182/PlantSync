@@ -1,4 +1,4 @@
-// Gemini 1.5 Flash — 식물 인식 + 급수 주기 통합 API
+// Gemini 2.0 Flash — 식물 인식 + 급수 주기 통합 API
 // 거실 창가 환경 + 현재 계절을 반영한 한국어 결과 반환
 
 import { GoogleGenerativeAI } from '@google/generative-ai'
@@ -12,7 +12,7 @@ export async function getWateringMethodByName(nickname, species = '') {
   if (!apiKey) throw new Error('Gemini API 키가 설정되지 않았습니다.')
 
   const genAI = new GoogleGenerativeAI(apiKey)
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
   const plantDesc = species ? nickname + ' (' + species + ')' : nickname
 
@@ -75,7 +75,7 @@ export async function identifyAndGetCycle(imageFile) {
   if (!apiKey) throw new Error('Gemini API 키가 설정되지 않았습니다.')
 
   const genAI = new GoogleGenerativeAI(apiKey)
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
   const base64    = await fileToBase64(imageFile)
   const mimeType  = imageFile.type || 'image/jpeg'
