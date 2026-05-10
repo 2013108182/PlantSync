@@ -103,18 +103,23 @@ export default function PlantCard({ plant, currentUserName, isReadOnly, onWater,
                   <span className="text-[11px] text-[#9CA3AF]">💧 {plant.wateringCycle}일마다</span>
                   {plant.wateringMethod && (
                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                          style={{ background: style.badge, color: style.badgeText }}>
+                          style={{ background: '#F3F4F6', color: '#4B5563' }}>
                       {METHOD_ICON[plant.wateringMethod] || '💧'} {plant.wateringMethod}
                     </span>
                   )}
                 </div>
                 {plant.wateringMethodNote && (
-                  <span className="text-[10px] text-[#9CA3AF] italic leading-snug">{plant.wateringMethodNote}</span>
+                  <span className="text-[10px] text-[#9CA3AF] italic leading-snug"
+                        style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    {plant.wateringMethodNote}
+                  </span>
                 )}
                 {plant.lastWateredAt ? (
                   <span className="text-[11px] text-[#6B7280]">
-                    <span className="font-semibold text-[#4B5563]">{plant.lastWateredBy}</span>
-                    {'가 '}{timeAgo(plant.lastWateredAt)} 물 줌
+                    {plant.lastWateredBy
+                      ? <><span className="font-semibold text-[#4B5563]">{plant.lastWateredBy}</span>{'가 '}</>
+                      : ''}
+                    {timeAgo(plant.lastWateredAt)} 물 줌
                   </span>
                 ) : (
                   <span className="text-[11px] text-[#D1D5DB] italic">💡 아직 물 준 기록이 없어요</span>
@@ -122,13 +127,14 @@ export default function PlantCard({ plant, currentUserName, isReadOnly, onWater,
               </div>  {/* flex flex-col gap-0.5 */}
 
               {!isReadOnly && (
-                <div className="flex gap-1">
-                  <button onClick={() => onEdit(plant)}
-                          className="w-7 h-7 rounded-lg bg-[#F3F4F6] flex items-center justify-center text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
+                <div className="flex gap-0.5 -mr-1">
+                  {/* 시각 크기 28px, 패딩으로 터치 타깃 44px 확보 */}
+                  <button onClick={() => onEdit(plant)} aria-label="편집"
+                          className="p-[8px] rounded-lg text-[#9CA3AF] hover:text-[#6B7280] hover:bg-[#F3F4F6] transition-colors">
                     <Edit3 size={13} />
                   </button>
-                  <button onClick={() => onDelete(plant)}
-                          className="w-7 h-7 rounded-lg bg-[#F3F4F6] flex items-center justify-center text-[#9CA3AF] hover:text-red-400 transition-colors">
+                  <button onClick={() => onDelete(plant)} aria-label="삭제"
+                          className="p-[8px] rounded-lg text-[#9CA3AF] hover:text-red-400 hover:bg-[#FEF2F2] transition-colors">
                     <Trash2 size={13} />
                   </button>
                 </div>
@@ -146,12 +152,4 @@ export default function PlantCard({ plant, currentUserName, isReadOnly, onWater,
         </div>
       ) : (
         <button onClick={handleWater} disabled={watering}
-                className="w-full py-3 flex items-center justify-center gap-2 font-semibold text-[13px] transition-all duration-200 disabled:opacity-60 active:brightness-95"
-                style={{ background: style.badge, color: style.badgeText }}>
-          <Droplets size={15} className={watering ? 'animate-bounce' : ''} />
-          {watering ? '기록 중...' : '물 줬어요 💧'}
-        </button>
-      )}
-    </div>
-  )
-}
+                className="w-full py-3 flex items-center justify-center gap-2 font-semibold text-[13px] transition-all

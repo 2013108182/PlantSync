@@ -1,6 +1,18 @@
 import { useState } from 'react'
 import { X, Loader, Sparkles } from 'lucide-react'
 import { getWateringMethodByName } from '../api/plantApi'
+import { Timestamp } from 'firebase/firestore'
+
+function todayString() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function tsToDateString(ts) {
+  if (!ts) return ''
+  const d = ts.toDate ? ts.toDate() : new Date(ts)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 const WATERING_METHODS = [
   { key: '듬뿍',    icon: '🚿', desc: '밑으로 물 빠질 때까지' },
@@ -14,6 +26,7 @@ export default function EditPlantModal({ plant, onClose, onSave }) {
     nickname:           plant.nickname           || '',
     species:            plant.species            || '',
     wateringCycle:      plant.wateringCycle      || 7,
+    lastWateredAt:      tsToDateString(plant.lastWateredAt),
     wateringMethod:     plant.wateringMethod     || '',
     wateringMethodNote: plant.wateringMethodNote || '',
   })
@@ -38,10 +51,14 @@ export default function EditPlantModal({ plant, onClose, onSave }) {
     if (!form.nickname.trim()) { setError('별명을 입력해주세요.'); return }
     setSaving(true)
     try {
+      const wateredTimestamp = form.lastWateredAt
+        ? Timestamp.fromDate(new Date(form.lastWateredAt))
+        : null
       await onSave(plant.id, {
         nickname:           form.nickname.trim(),
         species:            form.species.trim(),
         wateringCycle:      Number(form.wateringCycle) || 7,
+        lastWateredAt:      wateredTimestamp,
         wateringMethod:     form.wateringMethod,
         wateringMethodNote: form.wateringMethodNote,
       })
@@ -54,7 +71,7 @@ export default function EditPlantModal({ plant, onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-[#F2F1EC] rounded-t-[28px] shadow-2xl">
+      <div className="w-full max-w-md bg-[#F2F1EC] rounded-t-[28px] shadow-2xl max-h-[92vh] overflow-y-auto">
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 bg-[#D1D5DB] rounded-full" />
         </div>
@@ -88,6 +105,15 @@ export default function EditPlantModal({ plant, onClose, onSave }) {
                      onChange={e => setForm(f => ({ ...f, species: e.target.value }))}
                      className="w-full px-4 py-3 bg-[#F2F1EC] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1A3528]" />
             </div>
+            <div>
+              <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5">
+                마지막으로 물 준 날
+              </label>
+              <input type="date" value={form.lastWateredAt} max={todayString()}
+                     onChange={e => setForm(f => ({ ...f, lastWateredAt: e.target.value }))}
+                     className="w-full px-4 py-3 bg-[#F2F1EC] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1A3528]" />
+            </div>
+
             <div>
               <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-2">
                 급수 주기
@@ -129,33 +155,4 @@ export default function EditPlantModal({ plant, onClose, onSave }) {
                           className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-left transition-all"
                           style={form.wateringMethod === m.key
                             ? { background: '#1A3528', color: '#86EFAC' }
-                            : { background: '#F2F1EC', color: '#4B5563' }}>
-                    <span className="text-base">{m.icon}</span>
-                    <div>
-                      <p className="text-[12px] font-bold leading-none">{m.key}</p>
-                      <p className="text-[10px] mt-0.5 opacity-70">{m.desc}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-              {form.wateringMethodNote && (
-                <p className="text-[11px] text-[#6B7280] mt-1.5 italic">{form.wateringMethodNote}</p>
-              )}
-            </div>
-          </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3">
-              <p className="text-red-500 text-xs font-medium">{error}</p>
-            </div>
-          )}
-
-          <button onClick={handleSave} disabled={saving}
-                  className="w-full flex items-center justify-center gap-2 py-4 bg-[#1A3528] text-white font-bold rounded-2xl text-sm disabled:opacity-50 active:scale-95 transition-transform">
-            {saving ? <><Loader size={15} className="animate-spin" /> 저장 중...</> : '저장하기'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
+                            

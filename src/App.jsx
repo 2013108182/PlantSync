@@ -11,6 +11,14 @@ import EditPlantModal     from './components/EditPlantModal'
 import SettingsModal      from './components/SettingsModal'
 import DeleteConfirmModal from './components/DeleteConfirmModal'
 
+// 한국어 이/가 조사: 마지막 글자 받침 있으면 '이가', 없으면 '가'
+function josa이가(str) {
+  if (!str) return '가'
+  const code = str.charCodeAt(str.length - 1)
+  if (code < 0xAC00 || code > 0xD7A3) return '가'   // 한글 범위 밖이면 기본 '가'
+  return (code - 0xAC00) % 28 > 0 ? '이가' : '가'
+}
+
 function getGreeting() {
   const h = new Date().getHours()
   if (h < 6)  return '밤이 깊었네요'
@@ -57,7 +65,7 @@ export default function App() {
       toast(
         (t) => (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontWeight: 600, fontSize: 14 }}>💧 {name}이(가) 물을 줬어요!</span>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>💧 {name}{josa이가(name)} 물을 줬어요!</span>
             <button
               onClick={async () => {
                 toast.dismiss(t.id)
@@ -235,15 +243,4 @@ export default function App() {
       {/* 모달 — 읽기 전용이면 열리지 않음 */}
       {!isReadOnly && showAdd      && <AddPlantModal      onClose={() => setShowAdd(false)}      onSave={handleAddSave} />}
       {!isReadOnly && editTarget   && <EditPlantModal     plant={editTarget}   onClose={() => setEditTarget(null)}   onSave={handleEditSave} />}
-      {!isReadOnly && deleteTarget && <DeleteConfirmModal plant={deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDeleteConfirm} />}
-      {!isReadOnly && showSettings && (
-        <SettingsModal
-          currentUserName={currentUserName}
-          isDeviceDetected={true}
-          onClose={() => setShowSettings(false)}
-          onChangeName={() => {}}
-        />
-      )}
-    </div>
-  )
-}
+      {!isReadOnly && deleteTarget && <DeleteConfirmModal plant={del

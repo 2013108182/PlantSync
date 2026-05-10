@@ -33,11 +33,14 @@ export const getNextWateringDate = (plant) => {
 }
 
 // D-Day 계산 (음수면 overdue, null이면 기록없음)
+// 양쪽을 자정 기준으로 정규화해서 시간대 오차 없이 순수 날짜 차이만 계산
 export const getDDay = (plant) => {
   const next = getNextWateringDate(plant)
   if (!next) return null   // 한 번도 물 안 줬음 → null
-  const now  = new Date()
-  return Math.ceil((next - now) / (1000 * 60 * 60 * 24))
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  next.setHours(0, 0, 0, 0)
+  return Math.round((next - today) / (1000 * 60 * 60 * 24))
 }
 
 // 정렬용 D-Day (null은 맨 뒤에, 연체 → 오늘 → 여유 순)
@@ -118,9 +121,4 @@ export function usePlants() {
   }
 
   // 식물 삭제 (ImgBB는 API로 삭제 불가 → Firestore 문서만 삭제)
-  const deletePlant = async (plant) => {
-    await deleteDoc(doc(db, 'plants', plant.id))
-  }
-
-  return { plants, loading, error, addPlant, waterPlant, undoWater, updatePlant, deletePlant }
-}
+  const deletePlant = async

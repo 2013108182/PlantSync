@@ -2,6 +2,13 @@ import { useState, useRef } from 'react'
 import { X, Camera, Loader, Sparkles, ChevronDown, ChevronUp, Check } from 'lucide-react'
 import { identifyAndGetCycle } from '../api/plantApi'
 
+const WATERING_METHODS = [
+  { key: '듬뿍',    icon: '🚿', desc: '밑으로 물 빠질 때까지' },
+  { key: '겉흙만',  icon: '💧', desc: '겉흙만 촉촉하게' },
+  { key: '스프레이', icon: '🌫️', desc: '분무기로 뿌리기' },
+  { key: '소량자주', icon: '🫧', desc: '조금씩 자주' },
+]
+
 const STEPS = { UPLOAD: 'upload', IDENTIFYING: 'identifying', CONFIRM: 'confirm', SAVING: 'saving' }
 
 // 오늘 날짜를 <input type="date"> 기본값 형식(YYYY-MM-DD)으로 반환
@@ -282,7 +289,33 @@ export default function AddPlantModal({ onClose, onSave }) {
                   <p className="text-[11px] text-[#9CA3AF] mt-1">기본값은 오늘이에요</p>
                 </div>
 
-                {/* 급수 주기 */}
+                {/* 물 주는 법 */}
+                <div>
+                  <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-2">
+                    물 주는 법
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {WATERING_METHODS.map(m => (
+                      <button key={m.key} type="button"
+                              onClick={() => setWateringMethod(wm => wm === m.key ? '' : m.key)}
+                              className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-left transition-all"
+                              style={wateringMethod === m.key
+                                ? { background: '#1A3528', color: '#86EFAC' }
+                                : { background: '#F2F1EC', color: '#4B5563' }}>
+                        <span className="text-base">{m.icon}</span>
+                        <div>
+                          <p className="text-[12px] font-bold leading-none">{m.key}</p>
+                          <p className="text-[10px] mt-0.5 opacity-70">{m.desc}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  {wateringMethodNote && (
+                    <p className="text-[11px] text-[#6B7280] mt-1.5 italic">{wateringMethodNote}</p>
+                  )}
+                </div>
+
+              {/* 급수 주기 */}
                 <div>
                   <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-2">
                     급수 주기
@@ -295,36 +328,4 @@ export default function AddPlantModal({ onClose, onSave }) {
 
                   {/* 슬라이더 + 숫자 입력 */}
                   <div className="flex items-center gap-3">
-                    <input type="range" min="1" max="60" value={form.wateringCycle}
-                           onChange={e => { setForm(f => ({ ...f, wateringCycle: e.target.value })); setCycleHint('') }}
-                           className="flex-1 accent-[#1A3528]" />
-                    <div className="flex items-center gap-1.5">
-                      <input type="number" min="1" max="365" value={form.wateringCycle}
-                             onChange={e => { setForm(f => ({ ...f, wateringCycle: e.target.value })); setCycleHint('') }}
-                             className="w-14 px-2 py-2 bg-[#F2F1EC] rounded-xl text-center text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#1A3528]" />
-                      <span className="text-sm text-[#9CA3AF]">일</span>
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-[#9CA3AF] mt-1">슬라이더로 직접 조정도 가능해요</p>
-                </div>
-              </div>
-
-              {error && (
-                <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3">
-                  <p className="text-red-500 text-xs font-medium">{error}</p>
-                </div>
-              )}
-
-              <button onClick={handleSave} disabled={step === STEPS.SAVING}
-                      className="w-full flex items-center justify-center gap-2 py-4 bg-[#1A3528] text-white font-bold rounded-2xl text-sm disabled:opacity-50 active:scale-95 transition-transform">
-                {step === STEPS.SAVING
-                  ? <><Loader size={15} className="animate-spin" /> 저장 중...</>
-                  : '등록 완료 🌿'}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
+                    <input type="range" min="1"
