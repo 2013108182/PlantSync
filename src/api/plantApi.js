@@ -4,8 +4,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
 /**
- * 식물 이름(+학명)만으로 물 주는 방식을 Gemini에게 물어보는 함수
- * 기존 등록 식물에 wateringMethod가 없을 때 사용
+ * 식물 이름(+학명)으로 물 주는 방식 + 급수 주기를 Gemini에게 물어보는 함수
+ * 수정 모달의 AI로 알아보기 버튼에서 사용
  */
 export async function getWateringMethodByName(nickname, species = '') {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY
@@ -15,20 +15,25 @@ export async function getWateringMethodByName(nickname, species = '') {
   const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' })
 
   const plantDesc = species ? nickname + ' (' + species + ')' : nickname
+  const month = new Date().getMonth() + 1
+  const season = (month >= 6 && month <= 8) ? '여름' : (month >= 12 || month <= 2) ? '겨울' : (month >= 3 && month <= 5) ? '봄' : '가을'
 
   const lines = [
-    '당신은 식물 전문가입니다. "' + plantDesc + '" 식물의 실내 거실 창가 환경 기준 물 주는 방식을 알려주세요.',
+    '당신은 식물 전문가입니다. "' + plantDesc + '" 식물의 실내 거실 창가 기준으로 아래를 알려주세요.',
+    '현재 계절: ' + season + ' (' + month + '월)',
     '',
-    '아래 4가지 중 정확히 하나만 골라 wateringMethod에 넣어주세요.',
-    '- "듬뿍" : 화분 밑으로 물이 빠질 때까지 충분히 준다',
-    '- "겉흙만" : 겉흙이 살짝 촉촉해질 정도만 준다',
-    '- "스프레이" : 분무기로 잎과 표면에 뿌린다',
-    '- "소량자주" : 적은 양을 조금씩 자주 준다',
+    '1. wateringMethod: 아래 4가지 중 정확히 하나만 선택',
+    '   - "듬뿍" : 화분 밑으로 물이 빠질 때까지 충분히',
+    '   - "겉흙만" : 겉흙이 살짝 촉촉해질 정도만',
+    '   - "스프레이" : 분무기로 잎과 표면에 뿌리기',
+    '   - "소량자주" : 적은 양을 조금씩 자주',
     '',
-    'wateringMethodNote에는 이 선택의 이유를 한 줄(30자 이내)로 작성해주세요.',
+    '2. wateringCycle: 거실 창가 + 현재 계절 기준 급수 주기(일, 정수)',
+    '',
+    '3. wateringMethodNote: 방식 선택 이유 한 줄(30자 이내)',
+    '',
     '코드블록 없이 순수 JSON만 반환하세요.',
-    '',
-    '{ "wateringMethod": "듬뿍", "wateringMethodNote": "이유 한 줄" }',
+    '{ "wateringMethod": "듬뿍", "wateringCycle": 7, "wateringMethodNote": "이유 한 줄" }',
   ]
   const prompt = lines.join('\n')
 
@@ -41,8 +46,9 @@ export async function getWateringMethodByName(nickname, species = '') {
   catch { throw new Error('AI 응답을 처리할 수 없어요. 다시 시도해주세요.') }
 
   return {
-    wateringMethod:     parsed.wateringMethod     || '',
-    wateringMethodNote: parsed.wateringMethodNote || '',
+    wateringMethod:     parsed.wateringMethod                            || '',
+    wateringCycle:      Math.max(1, Math.round(Number(parsed.wateringCycle) || 7)),
+    wateringMethodNote: parsed.wateringMethodNote                        || '',
   }
 }
 

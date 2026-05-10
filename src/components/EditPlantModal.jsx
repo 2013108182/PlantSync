@@ -30,17 +30,23 @@ export default function EditPlantModal({ plant, onClose, onSave }) {
     wateringMethod:     plant.wateringMethod     || '',
     wateringMethodNote: plant.wateringMethodNote || '',
   })
-  const [saving, setSaving]       = useState(false)
+  const [saving, setSaving]     = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
-  const [error, setError]         = useState('')
+  const [error, setError]       = useState('')
 
+  // AI로 물 주는 법 + 급수 주기 자동 조회
   const handleAiMethod = async () => {
     if (!form.nickname.trim()) { setError('별명을 먼저 입력해주세요.'); return }
     setAiLoading(true)
     setError('')
     try {
       const result = await getWateringMethodByName(form.nickname.trim(), form.species.trim())
-      setForm(f => ({ ...f, wateringMethod: result.wateringMethod, wateringMethodNote: result.wateringMethodNote }))
+      setForm(f => ({
+        ...f,
+        wateringMethod:     result.wateringMethod,
+        wateringMethodNote: result.wateringMethodNote,
+        wateringCycle:      result.wateringCycle,
+      }))
     } catch (e) {
       setError(e.message || 'AI 조회 실패')
     } finally { setAiLoading(false) }
@@ -89,26 +95,34 @@ export default function EditPlantModal({ plant, onClose, onSave }) {
         <div className="px-5 pb-8 space-y-3">
           <div className="bg-white rounded-2xl p-4 card-shadow space-y-4">
             <div>
-              <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5">식물 별명 *</label>
+              <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5">
+                식물 별명 *
+              </label>
               <input type="text" value={form.nickname}
                      onChange={e => setForm(f => ({ ...f, nickname: e.target.value }))}
                      className="w-full px-4 py-3 bg-[#F2F1EC] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1A3528]" />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5">식물 종류</label>
+              <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5">
+                식물 종류
+              </label>
               <input type="text" value={form.species}
                      onChange={e => setForm(f => ({ ...f, species: e.target.value }))}
                      className="w-full px-4 py-3 bg-[#F2F1EC] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1A3528]" />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5">마지막으로 물 준 날</label>
+              <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5">
+                마지막으로 물 준 날
+              </label>
               <input type="date" value={form.lastWateredAt} max={todayString()}
                      onChange={e => setForm(f => ({ ...f, lastWateredAt: e.target.value }))}
                      className="w-full px-4 py-3 bg-[#F2F1EC] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1A3528]" />
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-2">급수 주기</label>
+              <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-2">
+                급수 주기
+              </label>
               <div className="flex items-center gap-3">
                 <input type="range" min="1" max="60" value={form.wateringCycle}
                        onChange={e => setForm(f => ({ ...f, wateringCycle: e.target.value }))}
@@ -122,14 +136,17 @@ export default function EditPlantModal({ plant, onClose, onSave }) {
               </div>
             </div>
 
+            {/* 물 주는 법 + AI 버튼 */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">물 주는 법</label>
+                <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
+                  물 주는 법
+                </label>
                 <button onClick={handleAiMethod} disabled={aiLoading}
                         className="flex items-center gap-1 text-[11px] font-bold text-[#1A3528] disabled:opacity-50">
                   {aiLoading
                     ? <><Loader size={11} className="animate-spin" /> AI 조회 중...</>
-                    : <><Sparkles size={11} /> AI로 알아보기</>}
+                    : <><Sparkles size={11} /> 주기 + 방식 AI로</>}
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-2">
