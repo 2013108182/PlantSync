@@ -11,7 +11,6 @@ const WATERING_METHODS = [
 
 const STEPS = { UPLOAD: 'upload', IDENTIFYING: 'identifying', CONFIRM: 'confirm', SAVING: 'saving' }
 
-// 오늘 날짜를 <input type="date"> 기본값 형식(YYYY-MM-DD)으로 반환
 function todayString() {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -23,15 +22,15 @@ export default function AddPlantModal({ onClose, onSave }) {
   const [imagePreview, setImagePreview] = useState(null)
   const [suggestions, setSuggestions]   = useState([])
   const [showAllSug, setShowAllSug]     = useState(false)
-  const [cycleHint, setCycleHint]               = useState('')   // 보정 근거 표시
-  const [careNote, setCareNote]                 = useState('')   // 관리 팁
-  const [wateringMethod, setWateringMethod]     = useState('')   // 물 주는 방식
+  const [cycleHint, setCycleHint]               = useState('')
+  const [careNote, setCareNote]                 = useState('')
+  const [wateringMethod, setWateringMethod]     = useState('')
   const [wateringMethodNote, setWateringMethodNote] = useState('')
   const [form, setForm]                         = useState({
     nickname:      '',
     species:       '',
     wateringCycle: 7,
-    lastWateredAt: todayString(),   // 기본값: 오늘
+    lastWateredAt: todayString(),
   })
   const [error, setError] = useState('')
   const fileInputRef      = useRef()
@@ -44,7 +43,6 @@ export default function AddPlantModal({ onClose, onSave }) {
     setError('')
   }
 
-  // Gemini AI 인식
   const handleIdentify = async () => {
     if (!imageFile) { setError('사진을 먼저 선택해주세요.'); return }
     setStep(STEPS.IDENTIFYING)
@@ -69,10 +67,8 @@ export default function AddPlantModal({ onClose, onSave }) {
     }
   }
 
-  // AI 후보 선택 시 해당 식물로 폼 업데이트
   const selectSuggestion = (s) => {
     setForm(f => ({ ...f, nickname: s.name, species: s.scientific }))
-    // 후보 선택 시엔 기존 주기 그대로 유지 (Gemini가 1순위 기준으로 이미 계산)
     setCycleHint('선택한 식물 기준으로 수동 조정 가능해요')
     setCareNote('')
   }
@@ -122,7 +118,6 @@ export default function AddPlantModal({ onClose, onSave }) {
 
         <div className="px-5 pb-8 space-y-4">
 
-          {/* STEP 1: 사진 업로드 */}
           {(step === STEPS.UPLOAD || step === STEPS.IDENTIFYING) && (
             <>
               <div onClick={() => fileInputRef.current?.click()}
@@ -143,7 +138,6 @@ export default function AddPlantModal({ onClose, onSave }) {
                        className="hidden" onChange={handleImageSelect} />
               </div>
 
-              {/* 분석 중 메시지 */}
               {step === STEPS.IDENTIFYING && (
                 <div className="bg-[#1A3528]/10 rounded-2xl px-4 py-3 flex items-center gap-3">
                   <Loader size={16} className="animate-spin text-[#1A3528] flex-shrink-0" />
@@ -175,7 +169,6 @@ export default function AddPlantModal({ onClose, onSave }) {
             </>
           )}
 
-          {/* STEP 2: 확인 & 수정 */}
           {(step === STEPS.CONFIRM || step === STEPS.SAVING) && (
             <>
               {imagePreview && (
@@ -191,7 +184,6 @@ export default function AddPlantModal({ onClose, onSave }) {
                 </div>
               )}
 
-              {/* AI 관리 팁 + 물 주는 법 */}
               {(careNote || wateringMethod) && (
                 <div className="bg-[#1A3528]/8 border border-[#1A3528]/20 rounded-2xl px-4 py-3 space-y-2">
                   {wateringMethod && (
@@ -217,7 +209,6 @@ export default function AddPlantModal({ onClose, onSave }) {
                 </div>
               )}
 
-              {/* AI 후보 목록 */}
               {suggestions.length > 1 && (
                 <div className="bg-white rounded-2xl p-4 card-shadow space-y-2">
                   <p className="text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">AI 인식 결과</p>
@@ -252,48 +243,33 @@ export default function AddPlantModal({ onClose, onSave }) {
                 </div>
               )}
 
-              {/* 폼 */}
               <div className="bg-white rounded-2xl p-4 card-shadow space-y-4">
-
-                {/* 식물 별명 */}
                 <div>
-                  <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5">
-                    식물 별명 *
-                  </label>
+                  <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5">식물 별명 *</label>
                   <input type="text" value={form.nickname}
                          onChange={e => setForm(f => ({ ...f, nickname: e.target.value }))}
                          placeholder="예: 거실 몬스테라"
                          className="w-full px-4 py-3 bg-[#F2F1EC] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1A3528]" />
                 </div>
 
-                {/* 학명 (선택) */}
                 <div>
-                  <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5">
-                    학명 (선택)
-                  </label>
+                  <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5">학명 (선택)</label>
                   <input type="text" value={form.species}
                          onChange={e => setForm(f => ({ ...f, species: e.target.value }))}
                          placeholder="예: Monstera deliciosa"
                          className="w-full px-4 py-3 bg-[#F2F1EC] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1A3528] placeholder:text-[#C4C4C4]" />
                 </div>
 
-                {/* 마지막 물 준 날 */}
                 <div>
-                  <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5">
-                    마지막으로 물 준 날
-                  </label>
-                  <input type="date" value={form.lastWateredAt}
-                         max={todayString()}
+                  <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5">마지막으로 물 준 날</label>
+                  <input type="date" value={form.lastWateredAt} max={todayString()}
                          onChange={e => setForm(f => ({ ...f, lastWateredAt: e.target.value }))}
                          className="w-full px-4 py-3 bg-[#F2F1EC] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1A3528]" />
                   <p className="text-[11px] text-[#9CA3AF] mt-1">기본값은 오늘이에요</p>
                 </div>
 
-                {/* 물 주는 법 */}
                 <div>
-                  <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-2">
-                    물 주는 법
-                  </label>
+                  <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-2">물 주는 법</label>
                   <div className="grid grid-cols-2 gap-2">
                     {WATERING_METHODS.map(m => (
                       <button key={m.key} type="button"
@@ -315,17 +291,42 @@ export default function AddPlantModal({ onClose, onSave }) {
                   )}
                 </div>
 
-              {/* 급수 주기 */}
                 <div>
-                  <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-2">
-                    급수 주기
-                  </label>
-
-                  {/* 계절 보정 힌트 */}
+                  <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-2">급수 주기</label>
                   {cycleHint && (
                     <p className="text-[11px] text-[#16A34A] font-semibold mb-2">✓ {cycleHint}</p>
                   )}
-
-                  {/* 슬라이더 + 숫자 입력 */}
                   <div className="flex items-center gap-3">
-                    <input type="range" min="1"
+                    <input type="range" min="1" max="60" value={form.wateringCycle}
+                           onChange={e => { setForm(f => ({ ...f, wateringCycle: e.target.value })); setCycleHint('') }}
+                           className="flex-1 accent-[#1A3528]" />
+                    <div className="flex items-center gap-1.5">
+                      <input type="number" min="1" max="365" value={form.wateringCycle}
+                             onChange={e => { setForm(f => ({ ...f, wateringCycle: e.target.value })); setCycleHint('') }}
+                             className="w-14 px-2 py-2 bg-[#F2F1EC] rounded-xl text-center text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#1A3528]" />
+                      <span className="text-sm text-[#9CA3AF]">일</span>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-[#9CA3AF] mt-1">슬라이더로 직접 조정도 가능해요</p>
+                </div>
+              </div>
+
+              {error && (
+                <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+                  <p className="text-red-500 text-xs font-medium">{error}</p>
+                </div>
+              )}
+
+              <button onClick={handleSave} disabled={step === STEPS.SAVING}
+                      className="w-full flex items-center justify-center gap-2 py-4 bg-[#1A3528] text-white font-bold rounded-2xl text-sm disabled:opacity-50 active:scale-95 transition-transform">
+                {step === STEPS.SAVING
+                  ? <><Loader size={15} className="animate-spin" /> 저장 중...</>
+                  : '등록 완료 🌿'}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

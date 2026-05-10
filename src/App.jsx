@@ -11,11 +11,10 @@ import EditPlantModal     from './components/EditPlantModal'
 import SettingsModal      from './components/SettingsModal'
 import DeleteConfirmModal from './components/DeleteConfirmModal'
 
-// 한국어 이/가 조사: 마지막 글자 받침 있으면 '이가', 없으면 '가'
 function josa이가(str) {
   if (!str) return '가'
   const code = str.charCodeAt(str.length - 1)
-  if (code < 0xAC00 || code > 0xD7A3) return '가'   // 한글 범위 밖이면 기본 '가'
+  if (code < 0xAC00 || code > 0xD7A3) return '가'
   return (code - 0xAC00) % 28 > 0 ? '이가' : '가'
 }
 
@@ -38,7 +37,6 @@ export default function App() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [showSettings, setShowSettings] = useState(false)
 
-  // 기기 감지 중 (비동기) → 스플래시 표시
   if (isReadOnly === null) {
     return (
       <div className="min-h-screen bg-[#1A3528] flex flex-col items-center justify-center gap-4">
@@ -54,18 +52,18 @@ export default function App() {
 
   const handleWater = async (id, name) => {
     if (isReadOnly) return
-    // 실행취소를 위해 물 주기 전 상태 스냅샷
     const plant = plants.find(p => p.id === id)
     const prevLastWateredAt = plant?.lastWateredAt ?? null
     const prevLastWateredBy = plant?.lastWateredBy ?? null
 
     try {
       await waterPlant(id, name)
-      // 실행취소 버튼이 담긴 토스트 (5초 유지)
       toast(
         (t) => (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontWeight: 600, fontSize: 14 }}>💧 {name}{josa이가(name)} 물을 줬어요!</span>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>
+              {'💧 ' + name + josa이가(name) + ' 물을 줬어요!'}
+            </span>
             <button
               onClick={async () => {
                 toast.dismiss(t.id)
@@ -106,14 +104,13 @@ export default function App() {
   const handleDeleteConfirm = async (plant) => {
     if (isReadOnly) return
     await deletePlant(plant)
-    toast.success(`🗑️ ${plant.nickname} 삭제됨`)
+    toast.success('🗑️ ' + plant.nickname + ' 삭제됨')
   }
 
   return (
     <div className="min-h-screen bg-[#F2F1EC]">
       <Toaster position="top-center" />
 
-      {/* ── 헤더 ── */}
       <div className="bg-[#1A3528] pb-8 pt-12 px-5 rounded-b-[32px] relative overflow-hidden">
         <div className="absolute -top-10 -right-10 w-44 h-44 rounded-full bg-white/5 pointer-events-none" />
         <div className="absolute top-16 -right-4 w-28 h-28 rounded-full bg-white/5 pointer-events-none" />
@@ -140,7 +137,6 @@ export default function App() {
               )}
             </div>
 
-            {/* 설정 버튼 — 읽기 전용이면 숨김 */}
             {!isReadOnly && (
               <button onClick={() => setShowSettings(true)}
                       className="glass w-10 h-10 rounded-full flex items-center justify-center text-white/70 hover:text-white transition-all mt-1">
@@ -149,7 +145,6 @@ export default function App() {
             )}
           </div>
 
-          {/* 통계 */}
           {!loading && !error && (
             <div className="flex gap-2 flex-wrap">
               <div className="glass rounded-full px-3.5 py-1.5 flex items-center gap-1.5">
@@ -175,7 +170,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* ── 컨텐츠 ── */}
       <main className="px-4 pt-5 pb-28 max-w-lg mx-auto">
 
         {loading && (
@@ -230,7 +224,6 @@ export default function App() {
         )}
       </main>
 
-      {/* FAB — 읽기 전용이면 숨김 */}
       {!isReadOnly && plants.length > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
           <button onClick={() => setShowAdd(true)}
@@ -240,7 +233,17 @@ export default function App() {
         </div>
       )}
 
-      {/* 모달 — 읽기 전용이면 열리지 않음 */}
       {!isReadOnly && showAdd      && <AddPlantModal      onClose={() => setShowAdd(false)}      onSave={handleAddSave} />}
       {!isReadOnly && editTarget   && <EditPlantModal     plant={editTarget}   onClose={() => setEditTarget(null)}   onSave={handleEditSave} />}
-      {!isReadOnly && deleteTarget && <DeleteConfirmModal plant={del
+      {!isReadOnly && deleteTarget && <DeleteConfirmModal plant={deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDeleteConfirm} />}
+      {!isReadOnly && showSettings && (
+        <SettingsModal
+          currentUserName={currentUserName}
+          isDeviceDetected={true}
+          onClose={() => setShowSettings(false)}
+          onChangeName={() => {}}
+        />
+      )}
+    </div>
+  )
+}
