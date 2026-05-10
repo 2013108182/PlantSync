@@ -2,10 +2,6 @@ import { useState, useRef } from 'react'
 import { Droplets, Trash2, Edit3, Lock } from 'lucide-react'
 import { getDDay } from '../hooks/usePlants'
 
-// 노란색 임계값을 주기 대비 상대적으로 계산
-// - 2~3일 주기 식물: 1일 이하만 노란색 (바로 물 준 뒤엔 초록)
-// - 7일 주기: 3일 이하 노란색 (기존과 동일)
-// - 14일+ 주기: 최대 3일로 고정
 function yellowThreshold(wateringCycle = 7) {
   return Math.max(1, Math.min(3, Math.round(wateringCycle * 0.4)))
 }
@@ -19,7 +15,6 @@ function urgencyStyle(dday, wateringCycle = 7) {
   return                   { bar: '#22C55E', badge: '#DCFCE7', badgeText: '#15803D', dayText: '#16A34A', label: '상태 양호' }
 }
 
-// 물 주는 방식 → 아이콘 매핑
 const METHOD_ICON = { '듬뿍': '🚿', '겉흙만': '💧', '스프레이': '🌫️', '소량자주': '🫧' }
 
 function timeAgo(ts) {
@@ -33,14 +28,13 @@ function timeAgo(ts) {
 
 export default function PlantCard({ plant, currentUserName, isReadOnly, onWater, onDelete, onEdit }) {
   const [watering, setWatering]   = useState(false)
-  const [imgError, setImgError]   = useState(false)   // P2: broken image 처리
-  const wateringRef               = useRef(false)      // P1: 중복 탭 방지용 ref
+  const [imgError, setImgError]   = useState(false)
+  const wateringRef               = useRef(false)
 
   const dday  = getDDay(plant)
   const style = urgencyStyle(dday, plant.wateringCycle)
   const ddayLabel = dday === null ? '—' : dday < 0 ? `D+${Math.abs(dday)}` : dday === 0 ? 'D-Day' : `D-${dday}`
 
-  // P1-2: ref 기반 중복 요청 방지 (setState 지연과 무관하게 즉시 잠금)
   const handleWater = async () => {
     if (wateringRef.current) return
     wateringRef.current = true
@@ -57,7 +51,6 @@ export default function PlantCard({ plant, currentUserName, isReadOnly, onWater,
          style={{ borderLeft: `4px solid ${style.bar}` }}>
       <div className="p-4">
         <div className="flex gap-3">
-          {/* 식물 이미지 — P2: imgError 시 이모지 폴백 */}
           <div className="flex-shrink-0">
             {plant.imageUrl && !imgError ? (
               <img src={plant.imageUrl} alt={plant.nickname}
@@ -71,7 +64,6 @@ export default function PlantCard({ plant, currentUserName, isReadOnly, onWater,
             )}
           </div>
 
-          {/* 정보 */}
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -83,7 +75,6 @@ export default function PlantCard({ plant, currentUserName, isReadOnly, onWater,
                 )}
               </div>
 
-              {/* D-Day */}
               <div className="flex-shrink-0 flex flex-col items-end gap-1">
                 <span className="text-2xl font-extrabold tabular leading-none"
                       style={{ color: style.dayText }}>
@@ -96,7 +87,6 @@ export default function PlantCard({ plant, currentUserName, isReadOnly, onWater,
               </div>
             </div>
 
-            {/* 메타 */}
             <div className="mt-2.5 flex items-center justify-between">
               <div className="flex flex-col gap-0.5">
                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -124,11 +114,10 @@ export default function PlantCard({ plant, currentUserName, isReadOnly, onWater,
                 ) : (
                   <span className="text-[11px] text-[#D1D5DB] italic">💡 아직 물 준 기록이 없어요</span>
                 )}
-              </div>  {/* flex flex-col gap-0.5 */}
+              </div>
 
               {!isReadOnly && (
                 <div className="flex gap-0.5 -mr-1">
-                  {/* 시각 크기 28px, 패딩으로 터치 타깃 44px 확보 */}
                   <button onClick={() => onEdit(plant)} aria-label="편집"
                           className="p-[8px] rounded-lg text-[#9CA3AF] hover:text-[#6B7280] hover:bg-[#F3F4F6] transition-colors">
                     <Edit3 size={13} />
@@ -144,7 +133,6 @@ export default function PlantCard({ plant, currentUserName, isReadOnly, onWater,
         </div>
       </div>
 
-      {/* 물주기 버튼 */}
       {isReadOnly ? (
         <div className="w-full py-3 flex items-center justify-center gap-2 text-[13px] font-semibold text-[#C4C4C4]"
              style={{ background: '#F9F9F9' }}>
@@ -152,4 +140,12 @@ export default function PlantCard({ plant, currentUserName, isReadOnly, onWater,
         </div>
       ) : (
         <button onClick={handleWater} disabled={watering}
-                className="w-full py-3 flex items-center justify-center gap-2 font-semibold text-[13px] transition-all
+                className="w-full py-3 flex items-center justify-center gap-2 font-semibold text-[13px] transition-all duration-200 disabled:opacity-60 active:brightness-95"
+                style={{ background: style.badge, color: style.badgeText }}>
+          <Droplets size={15} className={watering ? 'animate-bounce' : ''} />
+          {watering ? '기록 중...' : '물 줬어요 💧'}
+        </button>
+      )}
+    </div>
+  )
+}
