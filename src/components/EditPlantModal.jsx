@@ -30,10 +30,11 @@ export default function EditPlantModal({ plant, onClose, onSave }) {
     wateringMethod:     plant.wateringMethod     || '',
     wateringMethodNote: plant.wateringMethodNote || '',
   })
-  const [saving, setSaving]       = useState(false)
+  const [saving, setSaving]     = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
-  const [error, setError]         = useState('')
+  const [error, setError]       = useState('')
 
+  // AI로 물 주는 법 자동 조회
   const handleAiMethod = async () => {
     if (!form.nickname.trim()) { setError('별명을 먼저 입력해주세요.'); return }
     setAiLoading(true)
@@ -89,26 +90,34 @@ export default function EditPlantModal({ plant, onClose, onSave }) {
         <div className="px-5 pb-8 space-y-3">
           <div className="bg-white rounded-2xl p-4 card-shadow space-y-4">
             <div>
-              <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5">식물 별명 *</label>
+              <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5">
+                식물 별명 *
+              </label>
               <input type="text" value={form.nickname}
                      onChange={e => setForm(f => ({ ...f, nickname: e.target.value }))}
                      className="w-full px-4 py-3 bg-[#F2F1EC] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1A3528]" />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5">식물 종류</label>
+              <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5">
+                식물 종류
+              </label>
               <input type="text" value={form.species}
                      onChange={e => setForm(f => ({ ...f, species: e.target.value }))}
                      className="w-full px-4 py-3 bg-[#F2F1EC] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1A3528]" />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5">마지막으로 물 준 날</label>
+              <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5">
+                마지막으로 물 준 날
+              </label>
               <input type="date" value={form.lastWateredAt} max={todayString()}
                      onChange={e => setForm(f => ({ ...f, lastWateredAt: e.target.value }))}
                      className="w-full px-4 py-3 bg-[#F2F1EC] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1A3528]" />
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-2">급수 주기</label>
+              <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-2">
+                급수 주기
+              </label>
               <div className="flex items-center gap-3">
                 <input type="range" min="1" max="60" value={form.wateringCycle}
                        onChange={e => setForm(f => ({ ...f, wateringCycle: e.target.value }))}
@@ -122,9 +131,12 @@ export default function EditPlantModal({ plant, onClose, onSave }) {
               </div>
             </div>
 
+            {/* 물 주는 법 */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">물 주는 법</label>
+                <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
+                  물 주는 법
+                </label>
                 <button onClick={handleAiMethod} disabled={aiLoading}
                         className="flex items-center gap-1 text-[11px] font-bold text-[#1A3528] disabled:opacity-50">
                   {aiLoading
@@ -143,33 +155,4 @@ export default function EditPlantModal({ plant, onClose, onSave }) {
                           className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-left transition-all"
                           style={form.wateringMethod === m.key
                             ? { background: '#1A3528', color: '#86EFAC' }
-                            : { background: '#F2F1EC', color: '#4B5563' }}>
-                    <span className="text-base">{m.icon}</span>
-                    <div>
-                      <p className="text-[12px] font-bold leading-none">{m.key}</p>
-                      <p className="text-[10px] mt-0.5 opacity-70">{m.desc}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-              {form.wateringMethodNote && (
-                <p className="text-[11px] text-[#6B7280] mt-1.5 italic">{form.wateringMethodNote}</p>
-              )}
-            </div>
-          </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3">
-              <p className="text-red-500 text-xs font-medium">{error}</p>
-            </div>
-          )}
-
-          <button onClick={handleSave} disabled={saving}
-                  className="w-full flex items-center justify-center gap-2 py-4 bg-[#1A3528] text-white font-bold rounded-2xl text-sm disabled:opacity-50 active:scale-95 transition-transform">
-            {saving ? <><Loader size={15} className="animate-spin" /> 저장 중...</> : '저장하기'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
+                            
